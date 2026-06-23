@@ -71,8 +71,9 @@
   superior y se refresca al cargar o votar.
 
 ### Horarios del trapito (Fase 5)
-- Al **Confirmo**, se registra automáticamente la **franja horaria** según el reloj
-  del dispositivo (`franja` en `spot_reports`), sin clicks extra.
+- Al **Confirmo**, se abre un selector para **elegir la franja horaria** del avistaje;
+  la franja correspondiente a la hora actual viene marcada como "· ahora" (sugerida).
+  Si el usuario no elige, se usa la actual. La franja se guarda en `spot_reports`.
 - Franjas (`src/lib/schedule.js`): 🌙 Madrugada (0–5) · 🌅 Mañana (6–11) ·
   🌇 Tarde (12–18) · 🌃 Noche (19–23).
 - `spots_cercanos` devuelve `horarios` (jsonb con el conteo por franja) y el popup

@@ -314,6 +314,49 @@ body,
   color: #9ca3af;
 }
 
+/* Selector de franja al confirmar */
+.spot-popup .franja-q {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.spot-popup .franja-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.spot-popup .franja-options .franja {
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  border-radius: 6px;
+  padding: 8px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.spot-popup .franja-options .franja.now {
+  border-color: #15803d;
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.spot-popup .franja-cancel {
+  width: 100%;
+  border: none;
+  background: #e5e7eb;
+  color: #374151;
+  border-radius: 6px;
+  padding: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 /* --- Punto de ubicación del usuario --- */
 .user-location-dot .pulse {
   width: 18px;

@@ -31,16 +31,40 @@ describe('SpotPopup', () => {
     expect(screen.getByText(/dudoso/i)).toBeInTheDocument()
   })
 
-  it('llama a onReport con el tipo correcto al votar', async () => {
+  it('"Ya no está" reporta el desmentido directamente', async () => {
+    const user = userEvent.setup()
+    const onReport = vi.fn()
+    render(<SpotPopup spot={baseSpot} canVote onReport={onReport} />)
+
+    await user.click(screen.getByRole('button', { name: /ya no está/i }))
+    expect(onReport).toHaveBeenCalledWith('abc', 'desmiente')
+  })
+
+  it('"Confirmo" abre el selector y confirma con la franja elegida', async () => {
+    const user = userEvent.setup()
+    const onReport = vi.fn()
+    render(<SpotPopup spot={baseSpot} canVote onReport={onReport} />)
+
+    // Al tocar Confirmo todavía no reporta: muestra el selector de franja
+    await user.click(screen.getByRole('button', { name: /confirmo/i }))
+    expect(onReport).not.toHaveBeenCalled()
+    expect(screen.getByText(/en qué horario/i)).toBeInTheDocument()
+
+    // Elegir una franja confirma con ese valor
+    await user.click(screen.getByRole('button', { name: /mañana/i }))
+    expect(onReport).toHaveBeenCalledWith('abc', 'confirma', 'manana')
+  })
+
+  it('se puede cancelar el selector de franja', async () => {
     const user = userEvent.setup()
     const onReport = vi.fn()
     render(<SpotPopup spot={baseSpot} canVote onReport={onReport} />)
 
     await user.click(screen.getByRole('button', { name: /confirmo/i }))
-    expect(onReport).toHaveBeenCalledWith('abc', 'confirma')
-
-    await user.click(screen.getByRole('button', { name: /ya no está/i }))
-    expect(onReport).toHaveBeenCalledWith('abc', 'desmiente')
+    await user.click(screen.getByRole('button', { name: /cancelar/i }))
+    expect(onReport).not.toHaveBeenCalled()
+    // Vuelve a mostrar los botones de voto
+    expect(screen.getByRole('button', { name: /confirmo/i })).toBeInTheDocument()
   })
 
   it('oculta los botones y muestra invitación si no puede votar', () => {

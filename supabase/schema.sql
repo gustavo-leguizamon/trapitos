@@ -36,8 +36,9 @@ create table if not exists public.spot_reports (
   spot_id    uuid not null references public.trapito_spots(id) on delete cascade,
   user_id    uuid not null references auth.users(id) on delete cascade,
   tipo       text not null check (tipo in ('confirma', 'desmiente')),
-  -- franja horaria del avistaje (solo en confirmaciones); para los horarios típicos
-  franja     text check (franja in ('madrugada', 'manana', 'tarde', 'noche')),
+  -- franjas horarias del avistaje (solo en confirmaciones); para los horarios típicos.
+  -- Es un arreglo: una confirmación puede abarcar varias franjas.
+  franjas    text[] check (franjas <@ array['madrugada', 'manana', 'tarde', 'noche']::text[]),
   created_at timestamptz not null default now(),
   unique (spot_id, user_id)
 );
@@ -79,12 +80,13 @@ as $$
     count(r.*) filter (where r.tipo = 'confirma')  as confirma_count,
     count(r.*) filter (where r.tipo = 'desmiente') as desmiente_count,
     greatest(s.created_at, max(r.created_at))      as last_activity,
-    -- conteo de confirmaciones por franja horaria (solo franjas con datos)
+    -- conteo de confirmaciones por franja horaria (solo franjas con datos).
+    -- Una confirmación puede sumar a varias franjas (franjas es un arreglo).
     jsonb_strip_nulls(jsonb_build_object(
-      'madrugada', nullif(count(*) filter (where r.tipo = 'confirma' and r.franja = 'madrugada'), 0),
-      'manana',    nullif(count(*) filter (where r.tipo = 'confirma' and r.franja = 'manana'), 0),
-      'tarde',     nullif(count(*) filter (where r.tipo = 'confirma' and r.franja = 'tarde'), 0),
-      'noche',     nullif(count(*) filter (where r.tipo = 'confirma' and r.franja = 'noche'), 0)
+      'madrugada', nullif(count(*) filter (where r.tipo = 'confirma' and 'madrugada' = any(r.franjas)), 0),
+      'manana',    nullif(count(*) filter (where r.tipo = 'confirma' and 'manana' = any(r.franjas)), 0),
+      'tarde',     nullif(count(*) filter (where r.tipo = 'confirma' and 'tarde' = any(r.franjas)), 0),
+      'noche',     nullif(count(*) filter (where r.tipo = 'confirma' and 'noche' = any(r.franjas)), 0)
     )) as horarios
   from public.trapito_spots s
   left join public.spot_reports r on r.spot_id = s.id

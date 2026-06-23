@@ -10,9 +10,10 @@ y versionado [SemVer](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Added
-- **Fase 5 — Horarios del trapito:** al confirmar se registra la franja horaria
-  (`src/lib/schedule.js`, columna `franja`); el popup muestra "🕒 Suele estar…"
-  y `spots_cercanos` devuelve `horarios` (conteo por franja).
+- **Fase 5/6 — Horarios del trapito:** se eligen una o varias franjas horarias al
+  dar de alta y al confirmar (`src/lib/schedule.js`, `FranjaSelector`, columna
+  `franjas`); el popup muestra "🕒 Suele estar…" y `spots_cercanos` devuelve
+  `horarios` (conteo por franja).
 - **Fase 4 — Reputación de usuarios:** badge con el nivel del usuario
   (nuevo/colaborador/confiable/experto) según sus aportes (`src/lib/reputation.js`,
   `ReputationBadge`); función SQL `mi_reputacion` (security definer, sin autovotos).
@@ -34,8 +35,9 @@ y versionado [SemVer](https://semver.org/lang/es/).
 - Guía de contribución en `CONTRIBUTING.md`.
 
 ### Changed
-- Al confirmar, el usuario ahora **elige la franja horaria** en un selector (con la
-  hora actual sugerida) en lugar de tomarse siempre automáticamente del reloj.
+- Las franjas horarias ahora se **eligen de a varias** (`FranjaSelector`), tanto al
+  confirmar como al **dar de alta** un trapito. La columna `franja` pasó a
+  `franjas text[]` (ver `supabase/migrations/phase6_franjas_multiples.sql`).
 - La función `spots_cercanos` ahora devuelve también `confirma_count`,
   `desmiente_count`, `last_activity` y `horarios` por trapito (cambia su retorno).
 - La lógica geoespacial (`toPointWKT`, `paddedRadius`) se extrajo a `src/lib/geo.js`

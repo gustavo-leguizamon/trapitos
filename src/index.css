@@ -190,9 +190,18 @@ body,
   font-family: inherit;
 }
 
+.sheet .field-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
 .sheet .actions {
   display: flex;
   gap: 12px;
+  margin-top: 4px;
 }
 
 .sheet button {
@@ -314,22 +323,22 @@ body,
   color: #9ca3af;
 }
 
-/* Selector de franja al confirmar */
-.spot-popup .franja-q {
+/* Selector de franja (popup y alta) */
+.franja-q {
   margin: 0 0 6px;
   font-size: 13px;
   font-weight: 700;
   color: #374151;
 }
 
-.spot-popup .franja-options {
+.franja-options {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
   margin-bottom: 6px;
 }
 
-.spot-popup .franja-options .franja {
+.franja-options .franja {
   border: 1px solid #d1d5db;
   background: #f9fafb;
   border-radius: 6px;
@@ -339,22 +348,39 @@ body,
   cursor: pointer;
 }
 
-.spot-popup .franja-options .franja.now {
+.franja-options .franja.selected {
   border-color: #15803d;
   background: #dcfce7;
   color: #15803d;
 }
 
-.spot-popup .franja-cancel {
-  width: 100%;
+.franja-picker-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.franja-picker-actions button {
+  flex: 1;
   border: none;
-  background: #e5e7eb;
-  color: #374151;
   border-radius: 6px;
-  padding: 7px;
+  padding: 8px;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.franja-picker-actions .franja-cancel {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.franja-picker-actions .confirm {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.franja-picker-actions button:disabled {
+  opacity: 0.5;
 }
 
 /* --- Punto de ubicación del usuario --- */

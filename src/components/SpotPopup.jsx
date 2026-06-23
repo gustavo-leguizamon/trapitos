@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { confidenceLevel, levelLabel } from '../lib/confidence'
 import { freshnessText, isAboutToExpire } from '../lib/expiry'
-import { rankedFranjas, franjaFromDate, franjaLabel, FRANJAS } from '../lib/schedule'
+import { rankedFranjas, franjaFromDate } from '../lib/schedule'
+import FranjaSelector from './FranjaSelector'
 
 // Contenido del popup de un trapito: datos, votos de la comunidad y acciones.
 export default function SpotPopup({ spot, canVote, onReport }) {
@@ -12,12 +13,13 @@ export default function SpotPopup({ spot, canVote, onReport }) {
   const expiring = isAboutToExpire(spot.last_activity)
   const franjas = rankedFranjas(spot.horarios)
 
-  // Al confirmar, el usuario elige la franja; la hora actual viene sugerida.
+  // Al confirmar, el usuario elige una o varias franjas; la actual viene sugerida.
   const [picking, setPicking] = useState(false)
-  const ahora = franjaFromDate()
+  const [seleccion, setSeleccion] = useState([franjaFromDate()])
 
-  function confirmar(franja) {
-    onReport(spot.id, 'confirma', franja)
+  function confirmar() {
+    if (!seleccion.length) return
+    onReport(spot.id, 'confirma', seleccion)
     setPicking(false)
   }
 
@@ -50,22 +52,16 @@ export default function SpotPopup({ spot, canVote, onReport }) {
         <p className="vote-hint">Tocá "Participar" para votar</p>
       ) : picking ? (
         <div className="franja-picker">
-          <p className="franja-q">¿En qué horario lo viste?</p>
-          <div className="franja-options">
-            {FRANJAS.map((f) => (
-              <button
-                key={f}
-                className={f === ahora ? 'franja now' : 'franja'}
-                onClick={() => confirmar(f)}
-              >
-                {franjaLabel(f)}
-                {f === ahora ? ' · ahora' : ''}
-              </button>
-            ))}
+          <p className="franja-q">¿En qué horario(s) lo viste?</p>
+          <FranjaSelector value={seleccion} onChange={setSeleccion} />
+          <div className="franja-picker-actions">
+            <button className="franja-cancel" onClick={() => setPicking(false)}>
+              Cancelar
+            </button>
+            <button className="confirm" onClick={confirmar} disabled={!seleccion.length}>
+              Confirmar
+            </button>
           </div>
-          <button className="franja-cancel" onClick={() => setPicking(false)}>
-            Cancelar
-          </button>
         </div>
       ) : (
         <div className="vote-actions">

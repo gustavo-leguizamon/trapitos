@@ -238,6 +238,17 @@ body,
   color: #6b7280;
 }
 
+.spot-popup .freshness {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.spot-popup .freshness .expiring {
+  color: #b45309;
+  font-weight: 600;
+}
+
 .spot-popup .votes {
   display: flex;
   gap: 12px;

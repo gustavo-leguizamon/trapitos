@@ -1,6 +1,6 @@
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import SpotPopup from './SpotPopup'
 import { confidenceLevel, levelOpacity } from '../lib/confidence'
 
@@ -25,6 +25,19 @@ const userIcon = L.divIcon({
   iconSize: [18, 18],
   iconAnchor: [9, 9],
 })
+
+// Envuelve el contenido del popup y evita que los clicks (p. ej. en los botones)
+// se propaguen al mapa y disparen su handler de click (que abriría el alta).
+function PopupContent({ children }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    if (ref.current) {
+      L.DomEvent.disableClickPropagation(ref.current)
+      L.DomEvent.disableScrollPropagation(ref.current)
+    }
+  }, [])
+  return <div ref={ref}>{children}</div>
+}
 
 // Captura el toque/click en el mapa para sugerir una nueva marca
 function ClickHandler({ onMapClick }) {
@@ -117,7 +130,9 @@ export default function MapView({
             opacity={levelOpacity(level)}
           >
             <Popup>
-              <SpotPopup spot={spot} canVote={canVote} onReport={onReport} />
+              <PopupContent>
+                <SpotPopup spot={spot} canVote={canVote} onReport={onReport} />
+              </PopupContent>
             </Popup>
           </Marker>
         )

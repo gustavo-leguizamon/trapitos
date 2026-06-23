@@ -43,6 +43,10 @@ y versionado [SemVer](https://semver.org/lang/es/).
 - La lógica geoespacial (`toPointWKT`, `paddedRadius`) se extrajo a `src/lib/geo.js`
   para poder testearla de forma aislada.
 
+### Fixed
+- Al tocar "Confirmo" en el popup, el click ya no se propaga al mapa (antes abría el
+  formulario de alta y tapaba el popup). El popup queda abierto para elegir la franja.
+
 ## [0.1.0] — MVP
 
 ### Added

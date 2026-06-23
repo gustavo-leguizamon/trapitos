@@ -36,6 +36,8 @@ create table if not exists public.spot_reports (
   spot_id    uuid not null references public.trapito_spots(id) on delete cascade,
   user_id    uuid not null references auth.users(id) on delete cascade,
   tipo       text not null check (tipo in ('confirma', 'desmiente')),
+  -- franja horaria del avistaje (solo en confirmaciones); para los horarios típicos
+  franja     text check (franja in ('madrugada', 'manana', 'tarde', 'noche')),
   created_at timestamptz not null default now(),
   unique (spot_id, user_id)
 );
@@ -66,7 +68,8 @@ returns table (
   created_at      timestamptz,
   confirma_count  bigint,
   desmiente_count bigint,
-  last_activity   timestamptz
+  last_activity   timestamptz,
+  horarios        jsonb
 )
 language sql
 stable
@@ -75,7 +78,14 @@ as $$
     s.id, s.lat, s.lng, s.calle, s.descripcion, s.status, s.created_at,
     count(r.*) filter (where r.tipo = 'confirma')  as confirma_count,
     count(r.*) filter (where r.tipo = 'desmiente') as desmiente_count,
-    greatest(s.created_at, max(r.created_at))      as last_activity
+    greatest(s.created_at, max(r.created_at))      as last_activity,
+    -- conteo de confirmaciones por franja horaria (solo franjas con datos)
+    jsonb_strip_nulls(jsonb_build_object(
+      'madrugada', nullif(count(*) filter (where r.tipo = 'confirma' and r.franja = 'madrugada'), 0),
+      'manana',    nullif(count(*) filter (where r.tipo = 'confirma' and r.franja = 'manana'), 0),
+      'tarde',     nullif(count(*) filter (where r.tipo = 'confirma' and r.franja = 'tarde'), 0),
+      'noche',     nullif(count(*) filter (where r.tipo = 'confirma' and r.franja = 'noche'), 0)
+    )) as horarios
   from public.trapito_spots s
   left join public.spot_reports r on r.spot_id = s.id
   where s.status = 'activo'

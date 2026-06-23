@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { useGeolocation } from './hooks/useGeolocation'
 import { toPointWKT, paddedRadius } from './lib/geo'
+import { franjaFromDate } from './lib/schedule'
 import MapView from './components/MapView'
 import AddSpotForm from './components/AddSpotForm'
 import ReputationBadge from './components/ReputationBadge'
@@ -101,9 +102,11 @@ export default function App() {
       setMessage('Iniciá sesión para votar.')
       return
     }
+    // Al confirmar, registramos la franja horaria actual (para los horarios típicos).
+    const franja = tipo === 'confirma' ? franjaFromDate() : null
     // Un voto por usuario y trapito: si ya votó, se actualiza (upsert)
     const { error } = await supabase.from('spot_reports').upsert(
-      { spot_id: spotId, user_id: session.user.id, tipo },
+      { spot_id: spotId, user_id: session.user.id, tipo, franja },
       { onConflict: 'spot_id,user_id' }
     )
     if (error) {

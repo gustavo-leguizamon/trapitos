@@ -46,7 +46,8 @@ src/
 │   ├── geo.js                Helpers puros: toPointWKT, paddedRadius
 │   ├── confidence.js         Score y nivel de confianza a partir de votos
 │   ├── expiry.js             Antigüedad / "por caducar" de una marca
-│   └── reputation.js         Puntaje y nivel de reputación del usuario
+│   ├── reputation.js         Puntaje y nivel de reputación del usuario
+│   └── schedule.js           Franjas horarias del trapito
 ├── components/
 │   ├── MapView.jsx           Mapa + marcadores + ViewportLoader + ClickHandler
 │   ├── AddSpotForm.jsx       Formulario de carga (hoja inferior)
@@ -61,7 +62,8 @@ supabase/
     ├── phase2_votos_confianza.sql  Cambios de la Fase 2 para una base existente
     ├── phase3_caducidad.sql        Fase 3: last_activity + expirar_trapitos
     ├── phase3_caducidad_cron.sql   Fase 3: programación con pg_cron (opcional)
-    └── phase4_reputacion.sql       Fase 4: función mi_reputacion
+    ├── phase4_reputacion.sql       Fase 4: función mi_reputacion
+    └── phase5_horarios.sql         Fase 5: franja + horarios en spots_cercanos
 ```
 
 ## Modelo de datos
@@ -87,6 +89,7 @@ Tabla `spot_reports` (votos de la comunidad — Fase 2):
 | `spot_id` | uuid | FK a `trapito_spots` (on delete cascade) |
 | `user_id` | uuid | FK a `auth.users` |
 | `tipo` | text | `confirma` o `desmiente` |
+| `franja` | text | franja horaria del avistaje (solo en confirmaciones) |
 | `created_at` | timestamptz | — |
 | — | unique | `(spot_id, user_id)`: un voto por usuario y trapito |
 
@@ -94,8 +97,9 @@ Tabla `spot_reports` (votos de la comunidad — Fase 2):
 La función `spots_cercanos(lat, lng, radio_m)` usa `ST_DWithin` sobre la columna
 `geom` (geography, en metros) y ordena por cercanía con el operador KNN `<->`.
 Hace `left join` con `spot_reports` y devuelve por cada trapito los conteos
-`confirma_count` y `desmiente_count` (para el score de confianza) y `last_activity`
-(alta o último voto, para la antigüedad/caducidad).
+`confirma_count` y `desmiente_count` (para el score de confianza), `last_activity`
+(alta o último voto, para la antigüedad/caducidad) y `horarios` (jsonb con el
+conteo de confirmaciones por franja horaria).
 
 ### Caducidad de marcas
 La función `expirar_trapitos(dias_inactividad, umbral_dudoso)` pone en `inactivo`

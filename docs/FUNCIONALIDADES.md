@@ -19,6 +19,7 @@
 | 9 | Antigüedad de la marca | Muestra "visto hace N días" y avisa "por caducar" cuando se acerca al límite | ✅ | `src/lib/expiry.test.js` |
 | 10 | Caducidad automática | Trabajo programado que desactiva trapitos dudosos o sin actividad hace mucho | ✅ | — (función SQL `expirar_trapitos`) |
 | 11 | Reputación de usuarios | Badge con tu nivel (nuevo/colaborador/confiable/experto) según tus aportes | ✅ | `src/lib/reputation.test.js`, `src/components/ReputationBadge.test.jsx` |
+| 12 | Horarios del trapito | Muestra las franjas en que suele aparecer, según las confirmaciones | ✅ | `src/lib/schedule.test.js`, `src/components/SpotPopup.test.jsx` |
 
 ## Detalle del flujo
 
@@ -68,6 +69,14 @@
 - Niveles por puntaje: `🌱 Nuevo` (<5) · `🙂 Colaborador` (5–19) ·
   `⭐ Confiable` (20–49) · `🏆 Experto` (≥50). Se muestra como badge en la barra
   superior y se refresca al cargar o votar.
+
+### Horarios del trapito (Fase 5)
+- Al **Confirmo**, se registra automáticamente la **franja horaria** según el reloj
+  del dispositivo (`franja` en `spot_reports`), sin clicks extra.
+- Franjas (`src/lib/schedule.js`): 🌙 Madrugada (0–5) · 🌅 Mañana (6–11) ·
+  🌇 Tarde (12–18) · 🌃 Noche (19–23).
+- `spots_cercanos` devuelve `horarios` (jsonb con el conteo por franja) y el popup
+  muestra *"🕒 Suele estar: 🌇 Tarde (4) · 🌅 Mañana (1)"*, ordenado por cantidad.
 
 ## Funcionalidades planificadas (no implementadas)
 

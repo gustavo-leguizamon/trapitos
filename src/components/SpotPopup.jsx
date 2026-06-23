@@ -1,5 +1,6 @@
 import { confidenceLevel, levelLabel } from '../lib/confidence'
 import { freshnessText, isAboutToExpire } from '../lib/expiry'
+import { rankedFranjas } from '../lib/schedule'
 
 // Contenido del popup de un trapito: datos, votos de la comunidad y acciones.
 export default function SpotPopup({ spot, canVote, onReport }) {
@@ -8,6 +9,7 @@ export default function SpotPopup({ spot, canVote, onReport }) {
   const level = confidenceLevel(confirma, desmiente)
   const seen = freshnessText(spot.last_activity)
   const expiring = isAboutToExpire(spot.last_activity)
+  const franjas = rankedFranjas(spot.horarios)
 
   return (
     <div className="spot-popup">
@@ -20,6 +22,13 @@ export default function SpotPopup({ spot, canVote, onReport }) {
         <p className="freshness">
           👁 {seen}
           {expiring && <span className="expiring"> · ⏳ por caducar</span>}
+        </p>
+      )}
+
+      {franjas.length > 0 && (
+        <p className="horarios">
+          🕒 Suele estar:{' '}
+          {franjas.map((f) => `${f.label} (${f.cantidad})`).join(' · ')}
         </p>
       )}
 

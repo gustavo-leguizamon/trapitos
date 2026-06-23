@@ -65,4 +65,19 @@ describe('SpotPopup', () => {
     render(<SpotPopup spot={baseSpot} canVote onReport={vi.fn()} />)
     expect(screen.queryByText(/visto/i)).not.toBeInTheDocument()
   })
+
+  it('muestra los horarios típicos ordenados por cantidad', () => {
+    const spot = { ...baseSpot, horarios: { manana: 1, tarde: 4 } }
+    render(<SpotPopup spot={spot} canVote onReport={vi.fn()} />)
+    const linea = screen.getByText(/suele estar/i)
+    expect(linea).toHaveTextContent('🌇 Tarde (4)')
+    expect(linea).toHaveTextContent('🌅 Mañana (1)')
+    // La tarde (4) va antes que la mañana (1)
+    expect(linea.textContent.indexOf('Tarde')).toBeLessThan(linea.textContent.indexOf('Mañana'))
+  })
+
+  it('no muestra horarios si no hay datos', () => {
+    render(<SpotPopup spot={baseSpot} canVote onReport={vi.fn()} />)
+    expect(screen.queryByText(/suele estar/i)).not.toBeInTheDocument()
+  })
 })

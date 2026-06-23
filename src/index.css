@@ -270,6 +270,12 @@ body,
   font-weight: 600;
 }
 
+.spot-popup .horarios {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #374151;
+}
+
 .spot-popup .votes {
   display: flex;
   gap: 12px;

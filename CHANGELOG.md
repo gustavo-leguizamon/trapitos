@@ -10,6 +10,9 @@ y versionado [SemVer](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Added
+- **Fase 5 — Horarios del trapito:** al confirmar se registra la franja horaria
+  (`src/lib/schedule.js`, columna `franja`); el popup muestra "🕒 Suele estar…"
+  y `spots_cercanos` devuelve `horarios` (conteo por franja).
 - **Fase 4 — Reputación de usuarios:** badge con el nivel del usuario
   (nuevo/colaborador/confiable/experto) según sus aportes (`src/lib/reputation.js`,
   `ReputationBadge`); función SQL `mi_reputacion` (security definer, sin autovotos).
@@ -32,7 +35,7 @@ y versionado [SemVer](https://semver.org/lang/es/).
 
 ### Changed
 - La función `spots_cercanos` ahora devuelve también `confirma_count`,
-  `desmiente_count` y `last_activity` por trapito (cambia su tipo de retorno).
+  `desmiente_count`, `last_activity` y `horarios` por trapito (cambia su retorno).
 - La lógica geoespacial (`toPointWKT`, `paddedRadius`) se extrajo a `src/lib/geo.js`
   para poder testearla de forma aislada.
 

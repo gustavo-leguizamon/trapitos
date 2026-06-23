@@ -39,10 +39,14 @@ function PopupContent({ children }) {
   return <div ref={ref}>{children}</div>
 }
 
-// Captura el toque/click en el mapa para sugerir una nueva marca
+// Captura el toque/click en el mapa para sugerir una nueva marca.
+// Ignora los clicks originados dentro de un popup (p. ej. el botón "Confirmo"),
+// que no deben abrir el formulario de alta.
 function ClickHandler({ onMapClick }) {
   useMapEvents({
     click(e) {
+      const target = e.originalEvent?.target
+      if (target?.closest?.('.leaflet-popup')) return
       onMapClick({ lat: e.latlng.lat, lng: e.latlng.lng })
     },
   })

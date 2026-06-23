@@ -1,0 +1,21 @@
+# Pre-commit: asegura la integridad del proyecto antes de cada commit.
+
+# 1) Correr la batería de tests. Si algo falla, el commit se aborta.
+echo "🧪 Corriendo tests..."
+npm run test:run || {
+  echo "❌ Hay tests que fallan. Corregilos antes de commitear."
+  exit 1
+}
+
+# 2) Recordatorio (no bloqueante): mantener la documentación al día.
+STAGED=$(git diff --cached --name-only)
+if echo "$STAGED" | grep -q '^src/'; then
+  if ! echo "$STAGED" | grep -qE '^(docs/|CHANGELOG\.md)'; then
+    echo ""
+    echo "⚠️  Modificaste código en src/ pero no tocaste docs/ ni CHANGELOG.md."
+    echo "    Si cambiaste o agregaste una funcionalidad, actualizá:"
+    echo "      - docs/FUNCIONALIDADES.md  (qué hace la app)"
+    echo "      - CHANGELOG.md             (registro de cambios)"
+    echo ""
+  fi
+fi

@@ -212,6 +212,70 @@ body,
   cursor: pointer;
 }
 
+/* --- Popup de un trapito --- */
+.spot-popup {
+  min-width: 160px;
+}
+
+.spot-popup .desc {
+  margin: 4px 0 0;
+  color: #4b5563;
+}
+
+.spot-popup .level {
+  margin: 8px 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.spot-popup .level-dudoso {
+  color: #b45309;
+}
+.spot-popup .level-confiable {
+  color: #15803d;
+}
+.spot-popup .level-neutral {
+  color: #6b7280;
+}
+
+.spot-popup .votes {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.spot-popup .vote-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.spot-popup .vote-actions button {
+  flex: 1;
+  border: none;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.spot-popup .vote-actions .confirm {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.spot-popup .vote-actions .deny {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.spot-popup .vote-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
 /* --- Punto de ubicación del usuario --- */
 .user-location-dot .pulse {
   width: 18px;

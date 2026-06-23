@@ -74,6 +74,25 @@ export default function App() {
     loadSpots(lastViewRef.current)
   }
 
+  // --- Votar un trapito (confirmar / "ya no está") ---
+  async function handleReport(spotId, tipo) {
+    if (!session) {
+      setMessage('Iniciá sesión para votar.')
+      return
+    }
+    // Un voto por usuario y trapito: si ya votó, se actualiza (upsert)
+    const { error } = await supabase.from('spot_reports').upsert(
+      { spot_id: spotId, user_id: session.user.id, tipo },
+      { onConflict: 'spot_id,user_id' }
+    )
+    if (error) {
+      setMessage('No se pudo registrar tu voto: ' + error.message)
+      return
+    }
+    setMessage(tipo === 'confirma' ? '¡Gracias! Confirmado 👍' : 'Gracias, lo marcamos 👎')
+    loadSpots(lastViewRef.current)
+  }
+
   return (
     <div className="app">
       <div className="map-wrap">
@@ -83,6 +102,8 @@ export default function App() {
           onMapClick={(loc) => setPendingLocation(loc)}
           recenterTrigger={recenterTrigger}
           onViewChange={loadSpots}
+          canVote={!!session}
+          onReport={handleReport}
         />
       </div>
 

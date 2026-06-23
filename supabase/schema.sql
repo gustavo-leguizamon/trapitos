@@ -28,27 +28,62 @@ create index if not exists trapito_spots_geom_idx
   on public.trapito_spots using gist (geom);
 
 -- -------------------------------------------------------------
--- RPC: traer trapitos dentro de un radio (en metros) de un punto
+-- Votos de la comunidad sobre cada trapito (Fase 2)
+-- Un voto por usuario y trapito; puede cambiarlo (upsert).
+-- -------------------------------------------------------------
+create table if not exists public.spot_reports (
+  id         uuid primary key default gen_random_uuid(),
+  spot_id    uuid not null references public.trapito_spots(id) on delete cascade,
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  tipo       text not null check (tipo in ('confirma', 'desmiente')),
+  created_at timestamptz not null default now(),
+  unique (spot_id, user_id)
+);
+
+create index if not exists spot_reports_spot_idx
+  on public.spot_reports (spot_id);
+
+-- -------------------------------------------------------------
+-- RPC: traer trapitos dentro de un radio (en metros) de un punto,
+-- junto con el conteo de votos (confirmaciones / desmentidos).
 -- Se llama desde el frontend con supabase.rpc('spots_cercanos', {...})
 -- -------------------------------------------------------------
+-- Se dropea primero porque cambia el tipo de retorno respecto a la Fase 1.
+drop function if exists public.spots_cercanos(double precision, double precision, double precision);
+
 create or replace function public.spots_cercanos(
   p_lat double precision,
   p_lng double precision,
   p_radio_m double precision default 2000
 )
-returns setof public.trapito_spots
+returns table (
+  id              uuid,
+  lat             double precision,
+  lng             double precision,
+  calle           text,
+  descripcion     text,
+  status          text,
+  created_at      timestamptz,
+  confirma_count  bigint,
+  desmiente_count bigint
+)
 language sql
 stable
 as $$
-  select *
-  from public.trapito_spots
-  where status = 'activo'
+  select
+    s.id, s.lat, s.lng, s.calle, s.descripcion, s.status, s.created_at,
+    count(r.*) filter (where r.tipo = 'confirma')  as confirma_count,
+    count(r.*) filter (where r.tipo = 'desmiente') as desmiente_count
+  from public.trapito_spots s
+  left join public.spot_reports r on r.spot_id = s.id
+  where s.status = 'activo'
     and st_dwithin(
-      geom,
+      s.geom,
       st_setsrid(st_makepoint(p_lng, p_lat), 4326)::geography,
       p_radio_m
     )
-  order by geom <-> st_setsrid(st_makepoint(p_lng, p_lat), 4326)::geography
+  group by s.id
+  order by s.geom <-> st_setsrid(st_makepoint(p_lng, p_lat), 4326)::geography
   limit 500;
 $$;
 
@@ -82,3 +117,35 @@ create policy "el autor puede borrar lo suyo"
   for delete
   to authenticated
   using (auth.uid() = created_by);
+
+-- -------------------------------------------------------------
+-- RLS para los votos (spot_reports)
+-- -------------------------------------------------------------
+alter table public.spot_reports enable row level security;
+
+-- Cualquiera puede LEER los votos (para mostrar los conteos)
+create policy "lectura publica de votos"
+  on public.spot_reports
+  for select
+  using (true);
+
+-- Solo usuarios autenticados votan, y el voto queda a su nombre
+create policy "usuarios autenticados votan"
+  on public.spot_reports
+  for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+-- Cada usuario puede cambiar o borrar su propio voto
+create policy "el votante actualiza su voto"
+  on public.spot_reports
+  for update
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "el votante borra su voto"
+  on public.spot_reports
+  for delete
+  to authenticated
+  using (auth.uid() = user_id);

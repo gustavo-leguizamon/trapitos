@@ -65,7 +65,8 @@ returns table (
   status          text,
   created_at      timestamptz,
   confirma_count  bigint,
-  desmiente_count bigint
+  desmiente_count bigint,
+  last_activity   timestamptz
 )
 language sql
 stable
@@ -73,7 +74,8 @@ as $$
   select
     s.id, s.lat, s.lng, s.calle, s.descripcion, s.status, s.created_at,
     count(r.*) filter (where r.tipo = 'confirma')  as confirma_count,
-    count(r.*) filter (where r.tipo = 'desmiente') as desmiente_count
+    count(r.*) filter (where r.tipo = 'desmiente') as desmiente_count,
+    greatest(s.created_at, max(r.created_at))      as last_activity
   from public.trapito_spots s
   left join public.spot_reports r on r.spot_id = s.id
   where s.status = 'activo'
@@ -86,6 +88,46 @@ as $$
   order by s.geom <-> st_setsrid(st_makepoint(p_lng, p_lat), 4326)::geography
   limit 500;
 $$;
+
+-- -------------------------------------------------------------
+-- Caducidad de marcas (Fase 3)
+-- Desactiva (status = 'inactivo') los trapitos que:
+--   a) acumulan muchos más desmentidos que confirmaciones, o
+--   b) no tienen actividad (alta ni votos) hace muchos días.
+-- Devuelve cuántos desactivó. Pensada para correr de forma programada (pg_cron).
+-- -------------------------------------------------------------
+create or replace function public.expirar_trapitos(
+  p_dias_inactividad integer default 90,
+  p_umbral_dudoso    integer default 3
+)
+returns integer
+language plpgsql
+as $$
+declare
+  v_afectados integer;
+begin
+  update public.trapito_spots s
+  set status = 'inactivo'
+  where s.status = 'activo'
+    and (
+      -- (a) muchos más desmentidos que confirmaciones
+      (
+        (select count(*) from public.spot_reports r where r.spot_id = s.id and r.tipo = 'desmiente')
+        - (select count(*) from public.spot_reports r where r.spot_id = s.id and r.tipo = 'confirma')
+      ) >= p_umbral_dudoso
+      -- (b) sin actividad (alta ni votos) hace muchos días
+      or greatest(
+           s.created_at,
+           (select max(r.created_at) from public.spot_reports r where r.spot_id = s.id)
+         ) < now() - make_interval(days => p_dias_inactividad)
+    );
+  get diagnostics v_afectados = row_count;
+  return v_afectados;
+end;
+$$;
+
+-- Esta función es de mantenimiento: que no la invoquen los clientes.
+revoke execute on function public.expirar_trapitos(integer, integer) from anon, authenticated;
 
 -- -------------------------------------------------------------
 -- Seguridad a nivel de fila (RLS)

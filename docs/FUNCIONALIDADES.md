@@ -16,6 +16,8 @@
 | 6 | Seguridad (RLS) | Cualquiera lee; solo autenticados crean; cada uno edita lo suyo | ✅ | — (definido en `supabase/schema.sql`) |
 | 7 | Votos de la comunidad | Botones "Confirmo" / "Ya no está" en cada trapito (un voto por usuario, modificable) | ✅ | `src/components/SpotPopup.test.jsx` |
 | 8 | Score de confianza | Nivel (confiable / sin confirmar / dudoso) según los votos; las marcas dudosas se atenúan en el mapa | ✅ | `src/lib/confidence.test.js` |
+| 9 | Antigüedad de la marca | Muestra "visto hace N días" y avisa "por caducar" cuando se acerca al límite | ✅ | `src/lib/expiry.test.js` |
+| 10 | Caducidad automática | Trabajo programado que desactiva trapitos dudosos o sin actividad hace mucho | ✅ | — (función SQL `expirar_trapitos`) |
 
 ## Detalle del flujo
 
@@ -43,12 +45,24 @@
    - entre medio → 🟡 Sin confirmar
    - `<= -2` → ⚠️ Dudoso (el marcador se atenúa con `levelOpacity`).
 
+### Caducidad de marcas (Fase 3)
+- En el popup se muestra la **antigüedad** ("visto hace N días", a partir de
+  `last_activity` = alta o último voto) y un aviso **⏳ por caducar** cuando está
+  dentro de los últimos 14 días antes del límite (`src/lib/expiry.js`).
+- La función SQL **`expirar_trapitos(dias=90, umbral=3)`** pone en `inactivo`
+  (deja de mostrarse) los trapitos que:
+  - acumulan `desmentidos − confirmaciones >= umbral` (muy dudosos), **o**
+  - no tienen actividad (alta ni votos) hace más de `dias` días.
+- Se programa con **pg_cron** para correr a diario (ver
+  `supabase/migrations/phase3_caducidad_cron.sql`). Es reversible: cambiar el
+  `status` de vuelta a `activo` reactiva la marca.
+
 ## Funcionalidades planificadas (no implementadas)
 
 | Fase | Funcionalidad | Notas |
 |------|---------------|-------|
-| 2 | Caducidad de marcas | Las viejas sin actividad o muy dudosas se desactivan automáticamente |
-| 3 | Reputación de usuarios | — |
-| 3 | Horarios del trapito, fotos | — |
-| 3 | Notificaciones por proximidad | — |
-| 3 | Moderación / reportes de abuso | — |
+| 4 | Reputación de usuarios | — |
+| 4 | Horarios del trapito, fotos | — |
+| 4 | Notificaciones por proximidad | — |
+| 4 | Moderación / reportes de abuso | — |
+| 4 | Reactivar marcas caducadas | Hoy las inactivas no se muestran, así que no se pueden volver a confirmar |

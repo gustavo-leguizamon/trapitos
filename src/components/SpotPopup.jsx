@@ -1,10 +1,13 @@
 import { confidenceLevel, levelLabel } from '../lib/confidence'
+import { freshnessText, isAboutToExpire } from '../lib/expiry'
 
 // Contenido del popup de un trapito: datos, votos de la comunidad y acciones.
 export default function SpotPopup({ spot, canVote, onReport }) {
   const confirma = spot.confirma_count ?? 0
   const desmiente = spot.desmiente_count ?? 0
   const level = confidenceLevel(confirma, desmiente)
+  const seen = freshnessText(spot.last_activity)
+  const expiring = isAboutToExpire(spot.last_activity)
 
   return (
     <div className="spot-popup">
@@ -12,6 +15,13 @@ export default function SpotPopup({ spot, canVote, onReport }) {
       {spot.descripcion && <p className="desc">{spot.descripcion}</p>}
 
       <p className={`level level-${level}`}>{levelLabel(level)}</p>
+
+      {seen && (
+        <p className="freshness">
+          👁 {seen}
+          {expiring && <span className="expiring"> · ⏳ por caducar</span>}
+        </p>
+      )}
 
       <div className="votes">
         <span title="Confirmaciones">👍 {confirma}</span>

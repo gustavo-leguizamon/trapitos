@@ -48,4 +48,21 @@ describe('SpotPopup', () => {
     expect(screen.queryByRole('button', { name: /confirmo/i })).not.toBeInTheDocument()
     expect(screen.getByText(/participar.*votar/i)).toBeInTheDocument()
   })
+
+  it('muestra la última actividad cuando hay last_activity', () => {
+    const reciente = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+    render(<SpotPopup spot={{ ...baseSpot, last_activity: reciente }} canVote onReport={vi.fn()} />)
+    expect(screen.getByText(/visto hace 3 días/i)).toBeInTheDocument()
+  })
+
+  it('avisa "por caducar" cuando la marca está cerca del límite', () => {
+    const viejo = new Date(Date.now() - 85 * 24 * 60 * 60 * 1000).toISOString()
+    render(<SpotPopup spot={{ ...baseSpot, last_activity: viejo }} canVote onReport={vi.fn()} />)
+    expect(screen.getByText(/por caducar/i)).toBeInTheDocument()
+  })
+
+  it('no muestra antigüedad si falta last_activity', () => {
+    render(<SpotPopup spot={baseSpot} canVote onReport={vi.fn()} />)
+    expect(screen.queryByText(/visto/i)).not.toBeInTheDocument()
+  })
 })

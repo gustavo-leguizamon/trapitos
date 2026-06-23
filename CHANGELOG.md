@@ -10,6 +10,12 @@ y versionado [SemVer](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Added
+- **Fase 3 — Caducidad de marcas:** función SQL `expirar_trapitos` que desactiva
+  trapitos muy dudosos o sin actividad hace mucho, programable con pg_cron
+  (`supabase/migrations/phase3_caducidad*.sql`).
+- **Fase 3 — Antigüedad en el popup:** "visto hace N días" y aviso "por caducar"
+  (`src/lib/expiry.js`); `spots_cercanos` ahora devuelve `last_activity`.
+- Tests nuevos: `expiry` y casos de antigüedad en `SpotPopup`.
 - **Fase 2 — Votos de la comunidad:** botones "Confirmo" / "Ya no está" en el
   popup de cada trapito (`SpotPopup`), con un voto por usuario y trapito.
 - **Fase 2 — Score de confianza:** nivel confiable / sin confirmar / dudoso según
@@ -22,8 +28,8 @@ y versionado [SemVer](https://semver.org/lang/es/).
 - Guía de contribución en `CONTRIBUTING.md`.
 
 ### Changed
-- La función `spots_cercanos` ahora devuelve también `confirma_count` y
-  `desmiente_count` por trapito (cambia su tipo de retorno respecto a la Fase 1).
+- La función `spots_cercanos` ahora devuelve también `confirma_count`,
+  `desmiente_count` y `last_activity` por trapito (cambia su tipo de retorno).
 - La lógica geoespacial (`toPointWKT`, `paddedRadius`) se extrajo a `src/lib/geo.js`
   para poder testearla de forma aislada.
 

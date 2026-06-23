@@ -44,18 +44,21 @@ src/
 │   └── useGeolocation.js     Observa la ubicación del usuario (watchPosition)
 ├── lib/
 │   ├── geo.js                Helpers puros: toPointWKT, paddedRadius
-│   └── confidence.js         Score y nivel de confianza a partir de votos
+│   ├── confidence.js         Score y nivel de confianza a partir de votos
+│   └── expiry.js             Antigüedad / "por caducar" de una marca
 ├── components/
 │   ├── MapView.jsx           Mapa + marcadores + ViewportLoader + ClickHandler
 │   ├── AddSpotForm.jsx       Formulario de carga (hoja inferior)
-│   └── SpotPopup.jsx         Popup de un trapito: votos, confianza y acciones
+│   └── SpotPopup.jsx         Popup de un trapito: votos, confianza, antigüedad
 └── test/
     └── setup.js              Setup global de los tests
 
 supabase/
 ├── schema.sql                Esquema completo (canónico): tablas, RPC y RLS
 └── migrations/
-    └── phase2_votos_confianza.sql  Cambios de la Fase 2 para una base existente
+    ├── phase2_votos_confianza.sql  Cambios de la Fase 2 para una base existente
+    ├── phase3_caducidad.sql        Fase 3: last_activity + expirar_trapitos
+    └── phase3_caducidad_cron.sql   Fase 3: programación con pg_cron (opcional)
 ```
 
 ## Modelo de datos
@@ -88,7 +91,14 @@ Tabla `spot_reports` (votos de la comunidad — Fase 2):
 La función `spots_cercanos(lat, lng, radio_m)` usa `ST_DWithin` sobre la columna
 `geom` (geography, en metros) y ordena por cercanía con el operador KNN `<->`.
 Hace `left join` con `spot_reports` y devuelve por cada trapito los conteos
-`confirma_count` y `desmiente_count`, que el frontend usa para el score de confianza.
+`confirma_count` y `desmiente_count` (para el score de confianza) y `last_activity`
+(alta o último voto, para la antigüedad/caducidad).
+
+### Caducidad de marcas
+La función `expirar_trapitos(dias_inactividad, umbral_dudoso)` pone en `inactivo`
+los trapitos muy dudosos o sin actividad hace mucho, y devuelve cuántos desactivó.
+Está pensada para ejecutarse de forma programada con **pg_cron** (a diario). El
+`execute` está revocado de `anon`/`authenticated`: es una tarea de mantenimiento.
 
 ### Seguridad (RLS)
 Row Level Security activado en ambas tablas.

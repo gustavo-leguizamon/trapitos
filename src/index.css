@@ -72,6 +72,27 @@ body,
   font-size: 13px;
 }
 
+.reputation {
+  pointer-events: auto;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  cursor: default;
+}
+
+.reputation-colaborador {
+  background: rgba(59, 130, 246, 0.35);
+}
+.reputation-confiable {
+  background: rgba(245, 158, 11, 0.4);
+}
+.reputation-experto {
+  background: rgba(34, 197, 94, 0.45);
+}
+
 /* --- Botones flotantes --- */
 .fab-group {
   position: absolute;

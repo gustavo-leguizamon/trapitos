@@ -18,6 +18,7 @@
 | 8 | Score de confianza | Nivel (confiable / sin confirmar / dudoso) según los votos; las marcas dudosas se atenúan en el mapa | ✅ | `src/lib/confidence.test.js` |
 | 9 | Antigüedad de la marca | Muestra "visto hace N días" y avisa "por caducar" cuando se acerca al límite | ✅ | `src/lib/expiry.test.js` |
 | 10 | Caducidad automática | Trabajo programado que desactiva trapitos dudosos o sin actividad hace mucho | ✅ | — (función SQL `expirar_trapitos`) |
+| 11 | Reputación de usuarios | Badge con tu nivel (nuevo/colaborador/confiable/experto) según tus aportes | ✅ | `src/lib/reputation.test.js`, `src/components/ReputationBadge.test.jsx` |
 
 ## Detalle del flujo
 
@@ -57,11 +58,22 @@
   `supabase/migrations/phase3_caducidad_cron.sql`). Es reversible: cambiar el
   `status` de vuelta a `activo` reactiva la marca.
 
+### Reputación de usuarios (Fase 4)
+- La función SQL `mi_reputacion()` (security definer, acotada a `auth.uid()`)
+  devuelve los agregados del usuario: marcas creadas, confirmaciones y desmentidos
+  recibidos en sus marcas, y votos emitidos. **No cuenta los autovotos.**
+- El front calcula el puntaje con pesos (`src/lib/reputation.js`):
+  `+2` por marca creada, `+3` por confirmación recibida, `-2` por desmentido
+  recibido, `+1` por voto emitido.
+- Niveles por puntaje: `🌱 Nuevo` (<5) · `🙂 Colaborador` (5–19) ·
+  `⭐ Confiable` (20–49) · `🏆 Experto` (≥50). Se muestra como badge en la barra
+  superior y se refresca al cargar o votar.
+
 ## Funcionalidades planificadas (no implementadas)
 
 | Fase | Funcionalidad | Notas |
 |------|---------------|-------|
-| 4 | Reputación de usuarios | — |
+| 4 | Reputación del autor en cada marca | Mostrar el nivel de quien la cargó (hoy solo se muestra la propia) |
 | 4 | Horarios del trapito, fotos | — |
 | 4 | Notificaciones por proximidad | — |
 | 4 | Moderación / reportes de abuso | — |

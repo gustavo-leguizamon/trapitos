@@ -10,6 +10,9 @@ y versionado [SemVer](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Added
+- **Fase 4 — Reputación de usuarios:** badge con el nivel del usuario
+  (nuevo/colaborador/confiable/experto) según sus aportes (`src/lib/reputation.js`,
+  `ReputationBadge`); función SQL `mi_reputacion` (security definer, sin autovotos).
 - **Fase 3 — Caducidad de marcas:** función SQL `expirar_trapitos` que desactiva
   trapitos muy dudosos o sin actividad hace mucho, programable con pg_cron
   (`supabase/migrations/phase3_caducidad*.sql`).

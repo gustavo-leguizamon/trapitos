@@ -4,6 +4,7 @@ import { useGeolocation } from './hooks/useGeolocation'
 import { toPointWKT, paddedRadius } from './lib/geo'
 import MapView from './components/MapView'
 import AddSpotForm from './components/AddSpotForm'
+import ReputationBadge from './components/ReputationBadge'
 
 export default function App() {
   const { position, error: geoError, loading: geoLoading } = useGeolocation()
@@ -13,6 +14,7 @@ export default function App() {
   const [saving, setSaving] = useState(false)
   const [recenterTrigger, setRecenterTrigger] = useState(0)
   const [message, setMessage] = useState(null)
+  const [reputation, setReputation] = useState(null)
   // Última área visible del mapa, para recargar tras agregar un trapito
   const lastViewRef = useRef(null)
 
@@ -22,6 +24,24 @@ export default function App() {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
     return () => sub.subscription.unsubscribe()
   }, [])
+
+  // --- Reputación del usuario logueado ---
+  const loadReputation = useCallback(async () => {
+    const { data, error } = await supabase.rpc('mi_reputacion')
+    if (error || !data || !data[0]) return
+    const r = data[0]
+    setReputation({
+      spotsCreados: Number(r.spots_creados),
+      confirmacionesRecibidas: Number(r.confirmaciones_recibidas),
+      desmentidosRecibidos: Number(r.desmentidos_recibidos),
+      votosEmitidos: Number(r.votos_emitidos),
+    })
+  }, [])
+
+  useEffect(() => {
+    if (session) loadReputation()
+    else setReputation(null)
+  }, [session, loadReputation])
 
   // Login anónimo: el usuario participa sin crear cuenta
   async function signInAnonymously() {
@@ -72,6 +92,7 @@ export default function App() {
     setPendingLocation(null)
     setMessage('¡Trapito marcado! Gracias por colaborar 🙌')
     loadSpots(lastViewRef.current)
+    loadReputation()
   }
 
   // --- Votar un trapito (confirmar / "ya no está") ---
@@ -91,6 +112,7 @@ export default function App() {
     }
     setMessage(tipo === 'confirma' ? '¡Gracias! Confirmado 👍' : 'Gracias, lo marcamos 👎')
     loadSpots(lastViewRef.current)
+    loadReputation()
   }
 
   return (
@@ -115,7 +137,7 @@ export default function App() {
             Participar
           </button>
         ) : (
-          <span className="badge">conectado</span>
+          <ReputationBadge stats={reputation} />
         )}
       </header>
 

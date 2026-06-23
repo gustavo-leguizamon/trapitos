@@ -34,6 +34,8 @@ y versionado [SemVer](https://semver.org/lang/es/).
 - Guía de contribución en `CONTRIBUTING.md`.
 
 ### Changed
+- Al confirmar, el usuario ahora **elige la franja horaria** en un selector (con la
+  hora actual sugerida) en lugar de tomarse siempre automáticamente del reloj.
 - La función `spots_cercanos` ahora devuelve también `confirma_count`,
   `desmiente_count`, `last_activity` y `horarios` por trapito (cambia su retorno).
 - La lógica geoespacial (`toPointWKT`, `paddedRadius`) se extrajo a `src/lib/geo.js`

@@ -97,13 +97,13 @@ export default function App() {
   }
 
   // --- Votar un trapito (confirmar / "ya no está") ---
-  async function handleReport(spotId, tipo) {
+  async function handleReport(spotId, tipo, franjaElegida) {
     if (!session) {
       setMessage('Iniciá sesión para votar.')
       return
     }
-    // Al confirmar, registramos la franja horaria actual (para los horarios típicos).
-    const franja = tipo === 'confirma' ? franjaFromDate() : null
+    // Al confirmar usamos la franja que eligió el usuario; si no eligió, la actual.
+    const franja = tipo === 'confirma' ? franjaElegida || franjaFromDate() : null
     // Un voto por usuario y trapito: si ya votó, se actualiza (upsert)
     const { error } = await supabase.from('spot_reports').upsert(
       { spot_id: spotId, user_id: session.user.id, tipo, franja },

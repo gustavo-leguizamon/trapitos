@@ -45,11 +45,13 @@ src/
 ├── lib/
 │   ├── geo.js                Helpers puros: toPointWKT, paddedRadius
 │   ├── confidence.js         Score y nivel de confianza a partir de votos
-│   └── expiry.js             Antigüedad / "por caducar" de una marca
+│   ├── expiry.js             Antigüedad / "por caducar" de una marca
+│   └── reputation.js         Puntaje y nivel de reputación del usuario
 ├── components/
 │   ├── MapView.jsx           Mapa + marcadores + ViewportLoader + ClickHandler
 │   ├── AddSpotForm.jsx       Formulario de carga (hoja inferior)
-│   └── SpotPopup.jsx         Popup de un trapito: votos, confianza, antigüedad
+│   ├── SpotPopup.jsx         Popup de un trapito: votos, confianza, antigüedad
+│   └── ReputationBadge.jsx   Badge con la reputación del usuario logueado
 └── test/
     └── setup.js              Setup global de los tests
 
@@ -58,7 +60,8 @@ supabase/
 └── migrations/
     ├── phase2_votos_confianza.sql  Cambios de la Fase 2 para una base existente
     ├── phase3_caducidad.sql        Fase 3: last_activity + expirar_trapitos
-    └── phase3_caducidad_cron.sql   Fase 3: programación con pg_cron (opcional)
+    ├── phase3_caducidad_cron.sql   Fase 3: programación con pg_cron (opcional)
+    └── phase4_reputacion.sql       Fase 4: función mi_reputacion
 ```
 
 ## Modelo de datos
@@ -99,6 +102,12 @@ La función `expirar_trapitos(dias_inactividad, umbral_dudoso)` pone en `inactiv
 los trapitos muy dudosos o sin actividad hace mucho, y devuelve cuántos desactivó.
 Está pensada para ejecutarse de forma programada con **pg_cron** (a diario). El
 `execute` está revocado de `anon`/`authenticated`: es una tarea de mantenimiento.
+
+### Reputación de usuarios
+La función `mi_reputacion()` es **security definer** con `search_path` fijo: puede
+contar todas las marcas/votos del usuario (incluso inactivas) pero está acotada a
+`auth.uid()`, por lo que no expone datos de terceros. Excluye los autovotos. El
+puntaje y el nivel se calculan en el front (`src/lib/reputation.js`).
 
 ### Seguridad (RLS)
 Row Level Security activado en ambas tablas.

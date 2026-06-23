@@ -1,6 +1,8 @@
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { useEffect } from 'react'
+import SpotPopup from './SpotPopup'
+import { confidenceLevel, levelOpacity } from '../lib/confidence'
 
 // Arregla los íconos por defecto de Leaflet (que se rompen con bundlers como Vite)
 import iconUrl from 'leaflet/dist/images/marker-icon.png'
@@ -72,7 +74,15 @@ function ViewportLoader({ onViewChange }) {
   return null
 }
 
-export default function MapView({ userPosition, spots, onMapClick, recenterTrigger, onViewChange }) {
+export default function MapView({
+  userPosition,
+  spots,
+  onMapClick,
+  recenterTrigger,
+  onViewChange,
+  canVote,
+  onReport,
+}) {
   const center = userPosition || { lat: -34.6037, lng: -58.3816 } // CABA por defecto
 
   return (
@@ -97,14 +107,21 @@ export default function MapView({ userPosition, spots, onMapClick, recenterTrigg
         </Marker>
       )}
 
-      {spots.map((spot) => (
-        <Marker key={spot.id} position={[spot.lat, spot.lng]} icon={defaultIcon}>
-          <Popup>
-            <strong>{spot.calle || 'Trapito'}</strong>
-            {spot.descripcion && <p style={{ margin: '4px 0 0' }}>{spot.descripcion}</p>}
-          </Popup>
-        </Marker>
-      ))}
+      {spots.map((spot) => {
+        const level = confidenceLevel(spot.confirma_count, spot.desmiente_count)
+        return (
+          <Marker
+            key={spot.id}
+            position={[spot.lat, spot.lng]}
+            icon={defaultIcon}
+            opacity={levelOpacity(level)}
+          >
+            <Popup>
+              <SpotPopup spot={spot} canVote={canVote} onReport={onReport} />
+            </Popup>
+          </Marker>
+        )
+      })}
     </MapContainer>
   )
 }

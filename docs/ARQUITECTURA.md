@@ -43,15 +43,19 @@ src/
 ├── hooks/
 │   └── useGeolocation.js     Observa la ubicación del usuario (watchPosition)
 ├── lib/
-│   └── geo.js                Helpers puros: toPointWKT, paddedRadius
+│   ├── geo.js                Helpers puros: toPointWKT, paddedRadius
+│   └── confidence.js         Score y nivel de confianza a partir de votos
 ├── components/
 │   ├── MapView.jsx           Mapa + marcadores + ViewportLoader + ClickHandler
-│   └── AddSpotForm.jsx       Formulario de carga (hoja inferior)
+│   ├── AddSpotForm.jsx       Formulario de carga (hoja inferior)
+│   └── SpotPopup.jsx         Popup de un trapito: votos, confianza y acciones
 └── test/
     └── setup.js              Setup global de los tests
 
 supabase/
-└── schema.sql                Tabla, índice GiST, función RPC y políticas RLS
+├── schema.sql                Esquema completo (canónico): tablas, RPC y RLS
+└── migrations/
+    └── phase2_votos_confianza.sql  Cambios de la Fase 2 para una base existente
 ```
 
 ## Modelo de datos
@@ -69,15 +73,34 @@ Tabla `trapito_spots`:
 | `created_at` | timestamptz | — |
 | `status` | text | `activo` por defecto (base para "caducidad" futura) |
 
+Tabla `spot_reports` (votos de la comunidad — Fase 2):
+
+| Columna | Tipo | Notas |
+|---------|------|-------|
+| `id` | uuid | PK |
+| `spot_id` | uuid | FK a `trapito_spots` (on delete cascade) |
+| `user_id` | uuid | FK a `auth.users` |
+| `tipo` | text | `confirma` o `desmiente` |
+| `created_at` | timestamptz | — |
+| — | unique | `(spot_id, user_id)`: un voto por usuario y trapito |
+
 ### Consulta por proximidad
 La función `spots_cercanos(lat, lng, radio_m)` usa `ST_DWithin` sobre la columna
 `geom` (geography, en metros) y ordena por cercanía con el operador KNN `<->`.
+Hace `left join` con `spot_reports` y devuelve por cada trapito los conteos
+`confirma_count` y `desmiente_count`, que el frontend usa para el score de confianza.
 
 ### Seguridad (RLS)
-Row Level Security activado. Políticas:
+Row Level Security activado en ambas tablas.
+
+`trapito_spots`:
 - **SELECT**: cualquiera lee los `status = 'activo'`.
 - **INSERT**: solo `authenticated`, y `created_by` debe ser el propio usuario.
 - **UPDATE/DELETE**: solo el autor de la marca.
+
+`spot_reports`:
+- **SELECT**: pública (para mostrar los conteos).
+- **INSERT/UPDATE/DELETE**: solo `authenticated`, y solo sobre el propio voto (`user_id = auth.uid()`).
 
 ## Decisiones de diseño
 

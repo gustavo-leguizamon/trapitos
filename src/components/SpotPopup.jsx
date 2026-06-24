@@ -3,10 +3,11 @@ import { confidenceLevel, levelLabel } from '../lib/confidence'
 import { freshnessText, isAboutToExpire } from '../lib/expiry'
 import { rankedFranjas, franjaFromDate } from '../lib/schedule'
 import { reputationScore, reputationLevel, reputationLabel } from '../lib/reputation'
+import { ABUSE_MOTIVOS } from '../lib/abuse'
 import FranjaSelector from './FranjaSelector'
 
 // Contenido del popup de un trapito: datos, votos de la comunidad y acciones.
-export default function SpotPopup({ spot, canVote, onReport }) {
+export default function SpotPopup({ spot, canVote, onReport, onAbuse }) {
   const confirma = spot.confirma_count ?? 0
   const desmiente = spot.desmiente_count ?? 0
   const level = confidenceLevel(confirma, desmiente)
@@ -18,11 +19,18 @@ export default function SpotPopup({ spot, canVote, onReport }) {
   // Al confirmar, el usuario elige una o varias franjas; la actual viene sugerida.
   const [picking, setPicking] = useState(false)
   const [seleccion, setSeleccion] = useState([franjaFromDate()])
+  // Reporte de abuso
+  const [reporting, setReporting] = useState(false)
 
   function confirmar() {
     if (!seleccion.length) return
     onReport(spot.id, 'confirma', seleccion)
     setPicking(false)
+  }
+
+  function reportar(motivo) {
+    onAbuse?.(spot.id, motivo)
+    setReporting(false)
   }
 
   return (
@@ -67,15 +75,34 @@ export default function SpotPopup({ spot, canVote, onReport }) {
             </button>
           </div>
         </div>
-      ) : (
-        <div className="vote-actions">
-          <button className="confirm" onClick={() => setPicking(true)}>
-            Confirmo
-          </button>
-          <button className="deny" onClick={() => onReport(spot.id, 'desmiente')}>
-            Ya no está
+      ) : reporting ? (
+        <div className="abuse-picker">
+          <p className="franja-q">¿Por qué lo reportás?</p>
+          <div className="franja-options">
+            {ABUSE_MOTIVOS.map((m) => (
+              <button key={m.key} className="franja" onClick={() => reportar(m.key)}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <button className="franja-cancel" onClick={() => setReporting(false)}>
+            Cancelar
           </button>
         </div>
+      ) : (
+        <>
+          <div className="vote-actions">
+            <button className="confirm" onClick={() => setPicking(true)}>
+              Confirmo
+            </button>
+            <button className="deny" onClick={() => onReport(spot.id, 'desmiente')}>
+              Ya no está
+            </button>
+          </div>
+          <button className="report-link" onClick={() => setReporting(true)}>
+            ⚠️ Reportar
+          </button>
+        </>
       )}
     </div>
   )

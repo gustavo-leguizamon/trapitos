@@ -68,7 +68,8 @@ supabase/
     ├── phase4_reputacion.sql       Fase 4: función mi_reputacion
     ├── phase5_horarios.sql         Fase 5: franja + horarios en spots_cercanos
     ├── phase6_franjas_multiples.sql Fase 6: franja -> franjas text[] (varias)
-    └── phase8_autor_reputacion.sql Fase 8: vista user_reputation + autor en spots
+    ├── phase8_autor_reputacion.sql Fase 8: vista user_reputation + autor en spots
+    └── phase9_moderacion.sql       Fase 9: abuse_reports + trigger de ocultado
 ```
 
 ## Modelo de datos
@@ -97,6 +98,20 @@ Tabla `spot_reports` (votos de la comunidad — Fase 2):
 | `franjas` | text[] | franjas horarias del avistaje (solo en confirmaciones; varias) |
 | `created_at` | timestamptz | — |
 | — | unique | `(spot_id, user_id)`: un voto por usuario y trapito |
+
+Tabla `abuse_reports` (moderación — Fase 9):
+
+| Columna | Tipo | Notas |
+|---------|------|-------|
+| `id` | uuid | PK |
+| `spot_id` | uuid | FK a `trapito_spots` |
+| `user_id` | uuid | FK a `auth.users` |
+| `motivo` | text | `ofensivo` / `falso` / `spam` / `otro` |
+| `created_at` | timestamptz | — |
+| — | unique | `(spot_id, user_id)`: un reporte por usuario y trapito |
+
+Un trigger (`check_abuse_threshold`, security definer) oculta el trapito
+(`status = 'oculto'`) al llegar a 3 usuarios distintos que lo reportaron.
 
 ### Consulta por proximidad
 La función `spots_cercanos(lat, lng, radio_m)` usa `ST_DWithin` sobre la columna
@@ -131,6 +146,9 @@ Row Level Security activado en ambas tablas.
 `spot_reports`:
 - **SELECT**: pública (para mostrar los conteos).
 - **INSERT/UPDATE/DELETE**: solo `authenticated`, y solo sobre el propio voto (`user_id = auth.uid()`).
+
+`abuse_reports`:
+- **SELECT/INSERT/UPDATE**: solo `authenticated` y solo sobre el propio reporte. No es público.
 
 ## Decisiones de diseño
 

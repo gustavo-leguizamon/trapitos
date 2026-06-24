@@ -10,6 +10,9 @@ y versionado [SemVer](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Added
+- **Fase 7 — Notificaciones por proximidad:** botón 🔔 que avisa (con la app abierta)
+  cuando te acercás a un trapito (`src/lib/proximity.js`,
+  `src/hooks/useProximityNotifications.js`); usa histéresis para no repetir avisos.
 - **Fase 5/6 — Horarios del trapito:** se eligen una o varias franjas horarias al
   dar de alta y al confirmar (`src/lib/schedule.js`, `FranjaSelector`, columna
   `franjas`); el popup muestra "🕒 Suele estar…" y `spots_cercanos` devuelve

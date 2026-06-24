@@ -20,6 +20,7 @@
 | 10 | Caducidad automática | Trabajo programado que desactiva trapitos dudosos o sin actividad hace mucho | ✅ | — (función SQL `expirar_trapitos`) |
 | 11 | Reputación de usuarios | Badge con tu nivel (nuevo/colaborador/confiable/experto) según tus aportes | ✅ | `src/lib/reputation.test.js`, `src/components/ReputationBadge.test.jsx` |
 | 12 | Horarios del trapito | Muestra las franjas en que suele aparecer; se eligen (varias) al confirmar y al dar de alta | ✅ | `src/lib/schedule.test.js`, `src/components/FranjaSelector.test.jsx`, `src/components/SpotPopup.test.jsx` |
+| 13 | Notificaciones por proximidad | Avisa (con la app abierta) cuando te acercás a un trapito; se activa con 🔔 | ✅ | `src/lib/proximity.test.js` |
 
 ## Detalle del flujo
 
@@ -58,6 +59,17 @@
 - Se programa con **pg_cron** para correr a diario (ver
   `supabase/migrations/phase3_caducidad_cron.sql`). Es reversible: cambiar el
   `status` de vuelta a `activo` reactiva la marca.
+
+### Notificaciones por proximidad (Fase 7)
+- Botón 🔔 en la barra superior activa/desactiva los avisos (pide permiso de
+  notificaciones y guarda la preferencia en `localStorage`).
+- Con los avisos activos, al acercarte a un trapito visible aparece una notificación
+  del navegador ("🅿️ Trapito cerca — a unos N m").
+- Lógica en `src/lib/proximity.js` (distancia Haversine + histéresis: avisa a 150 m,
+  "olvida" el aviso al alejarte más de 300 m, para no repetir). El disparo está en
+  `src/hooks/useProximityNotifications.js`.
+- **Limitación:** funciona con la app abierta (primer o segundo plano). No hay
+  geofencing en background con la app cerrada (no es confiable en una PWA).
 
 ### Reputación de usuarios (Fase 4)
 - La función SQL `mi_reputacion()` (security definer, acotada a `auth.uid()`)

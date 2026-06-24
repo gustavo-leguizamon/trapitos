@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { useGeolocation } from './hooks/useGeolocation'
+import { useProximityNotifications } from './hooks/useProximityNotifications'
 import { toPointWKT, paddedRadius } from './lib/geo'
 import { franjaFromDate } from './lib/schedule'
 import MapView from './components/MapView'
@@ -16,8 +17,14 @@ export default function App() {
   const [recenterTrigger, setRecenterTrigger] = useState(0)
   const [message, setMessage] = useState(null)
   const [reputation, setReputation] = useState(null)
+  const [notifEnabled, setNotifEnabled] = useState(
+    () => localStorage.getItem('notifProximidad') === '1'
+  )
   // Última área visible del mapa, para recargar tras agregar un trapito
   const lastViewRef = useRef(null)
+
+  // Notificaciones de proximidad a trapitos cercanos
+  useProximityNotifications(position, spots, notifEnabled)
 
   // --- Autenticación ---
   useEffect(() => {
@@ -48,6 +55,28 @@ export default function App() {
   async function signInAnonymously() {
     const { error } = await supabase.auth.signInAnonymously()
     if (error) setMessage('No se pudo iniciar sesión: ' + error.message)
+  }
+
+  // Activar/desactivar notificaciones de proximidad (pide permiso al activar)
+  async function toggleNotificaciones() {
+    if (notifEnabled) {
+      setNotifEnabled(false)
+      localStorage.removeItem('notifProximidad')
+      return
+    }
+    if (typeof Notification === 'undefined') {
+      setMessage('Tu navegador no soporta notificaciones.')
+      return
+    }
+    let permiso = Notification.permission
+    if (permiso === 'default') permiso = await Notification.requestPermission()
+    if (permiso !== 'granted') {
+      setMessage('Activá el permiso de notificaciones para recibir avisos.')
+      return
+    }
+    setNotifEnabled(true)
+    localStorage.setItem('notifProximidad', '1')
+    setMessage('Te avisaremos cuando estés cerca de un trapito 🔔')
   }
 
   // --- Cargar los trapitos del área visible del mapa ---
@@ -149,13 +178,27 @@ export default function App() {
       {/* Barra superior */}
       <header className="topbar">
         <span className="brand">🅿️ Trapitos</span>
-        {!session ? (
-          <button className="login-btn" onClick={signInAnonymously}>
-            Participar
+        <div className="topbar-right">
+          <button
+            className="icon-btn"
+            onClick={toggleNotificaciones}
+            title={
+              notifEnabled
+                ? 'Notificaciones de proximidad activadas'
+                : 'Activar notificaciones de proximidad'
+            }
+            aria-pressed={notifEnabled}
+          >
+            {notifEnabled ? '🔔' : '🔕'}
           </button>
-        ) : (
-          <ReputationBadge stats={reputation} />
-        )}
+          {!session ? (
+            <button className="login-btn" onClick={signInAnonymously}>
+              Participar
+            </button>
+          ) : (
+            <ReputationBadge stats={reputation} />
+          )}
+        </div>
       </header>
 
       {/* Botones flotantes */}

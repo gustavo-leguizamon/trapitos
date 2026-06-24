@@ -41,13 +41,15 @@ src/
 ├── App.jsx                   Orquesta auth, carga de spots y UI
 ├── supabaseClient.js         Cliente de Supabase (lee VITE_SUPABASE_*)
 ├── hooks/
-│   └── useGeolocation.js     Observa la ubicación del usuario (watchPosition)
+│   ├── useGeolocation.js     Observa la ubicación del usuario (watchPosition)
+│   └── useProximityNotifications.js  Avisos al acercarse a un trapito
 ├── lib/
 │   ├── geo.js                Helpers puros: toPointWKT, paddedRadius
 │   ├── confidence.js         Score y nivel de confianza a partir de votos
 │   ├── expiry.js             Antigüedad / "por caducar" de una marca
 │   ├── reputation.js         Puntaje y nivel de reputación del usuario
-│   └── schedule.js           Franjas horarias del trapito
+│   ├── schedule.js           Franjas horarias del trapito
+│   └── proximity.js          Distancia y alertas de proximidad
 ├── components/
 │   ├── MapView.jsx           Mapa + marcadores + ViewportLoader + ClickHandler
 │   ├── AddSpotForm.jsx       Formulario de carga (hoja inferior)

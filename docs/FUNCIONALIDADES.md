@@ -24,6 +24,7 @@
 | 14 | Reputación del autor en la marca | El popup muestra el nivel de reputación de quien cargó el trapito | ✅ | `src/components/SpotPopup.test.jsx` |
 | 15 | Moderación / reportes de abuso | "⚠️ Reportar" con motivo; al llegar a 3 reportes distintos el trapito se oculta | ✅ | `src/lib/abuse.test.js`, `src/components/SpotPopup.test.jsx` |
 | 16 | Reactivar caducados | Toggle ♻️ para ver los caducados y reactivarlos (no los ocultos por abuso) | ✅ | `src/components/SpotPopup.test.jsx` |
+| 17 | Pintar la cuadra | Detecta la cuadra (OSM/Overpass) y la pinta como línea coloreada por confianza, en vez de un solo punto | ✅ | `src/lib/street.test.js`, `src/lib/geo.test.js`, `src/lib/confidence.test.js` |
 
 ## Detalle del flujo
 
@@ -71,6 +72,23 @@
   `reactivar_trapito` (security definer) que pasa el `status` a `activo` **solo si
   estaba `inactivo`** (nunca revive un `oculto`) y registra una confirmación fresca
   del reactivador (refresca la actividad para que no recaduque enseguida).
+
+### Pintar la cuadra del trapito (Fase 11)
+- Al marcar un trapito (tocando el mapa o con ＋), se consulta **OpenStreetMap**
+  vía **Overpass** las calles cercanas y se recorta el **tramo entre las dos
+  esquinas** más cercanas al punto = la cuadra (`getBlockForPoint` en
+  `src/lib/street.js`, con Turf para la geometría). El nombre de la calle se
+  autocompleta en el formulario.
+- En el mapa, cada trapito se dibuja como una **línea (`Polyline`) coloreada
+  según la confianza** (`levelColor`: 🟢 confiable · 🟡 sin confirmar ·
+  🔴 dudoso · ⚪ caducado), en lugar de un pin. Las marcas viejas sin cuadra
+  siguen mostrándose como pin (respaldo).
+- Robustez: prueba **varios servidores Overpass** con timeout, **amplía el radio**
+  si no encuentra calles, y permite **reintentar** desde el formulario. El alta
+  **espera a que termine la detección** antes de guardar (botón deshabilitado con
+  "Detectando cuadra…"), para no guardar solo el punto por error.
+- Persistencia: columna `geom_calle geography(LineString,4326)`; `spots_cercanos`
+  devuelve `calle_geom` como GeoJSON. Migración `supabase/migrations/phase11_cuadra.sql`.
 
 ### Notificaciones por proximidad (Fase 7)
 - Botón 🔔 en la barra superior activa/desactiva los avisos (pide permiso de

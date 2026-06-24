@@ -10,6 +10,14 @@ y versionado [SemVer](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Added
+- **Fase 11 — Pintar la cuadra del trapito:** al marcar se detecta la cuadra
+  (tramo de calle entre esquinas) desde OpenStreetMap/Overpass y se recorta con
+  Turf (`src/lib/street.js`). Los trapitos se dibujan como una línea coloreada
+  según la confianza (`levelColor`), en vez de un solo pin. Nueva columna
+  `geom_calle` (LineString) y `spots_cercanos` devuelve `calle_geom` (GeoJSON);
+  ver `supabase/migrations/phase11_cuadra.sql`. La detección prueba varios
+  servidores Overpass con timeout y amplía el radio si no hay calles; si falla,
+  se puede reintentar o se marca solo el punto (las marcas viejas siguen como pin).
 - **Fase 10 — Reactivar marcas caducadas:** toggle ♻️ que muestra los caducados y
   un botón "Reactivar" en el popup; RPC `reactivar_trapito` (security definer) que
   revive solo `inactivo` → `activo` (nunca `oculto`) y refresca la actividad.

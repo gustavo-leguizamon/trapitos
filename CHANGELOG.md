@@ -56,6 +56,12 @@ y versionado [SemVer](https://semver.org/lang/es/).
 - Guía de contribución en `CONTRIBUTING.md`.
 
 ### Changed
+- **Formulario de alta más amigable:** la hoja de alta (`AddSpotForm`) ahora tiene
+  fondo atenuado, tirador, cierre con `Escape` o tocando afuera, una sola tarjeta de
+  "dónde" en la paleta de la app, campos opcionales marcados y mejores áreas táctiles.
+  Se **ocultan la latitud y longitud crudas** (no le aportan nada al usuario) y el
+  botón "Guardar" queda disponible mientras se detecta la cuadra. La franja actual se
+  muestra como insignia "ahora".
 - Las franjas horarias ahora se **eligen de a varias** (`FranjaSelector`), tanto al
   confirmar como al **dar de alta** un trapito. La columna `franja` pasó a
   `franjas text[]` (ver `supabase/migrations/phase6_franjas_multiples.sql`).

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { useGeolocation } from './hooks/useGeolocation'
 import { useProximityNotifications } from './hooks/useProximityNotifications'
-import { toPointWKT, paddedRadius } from './lib/geo'
+import { toPointWKT, toLineWKT, paddedRadius } from './lib/geo'
+import { getBlockForPoint } from './lib/street'
 import { franjaFromDate } from './lib/schedule'
 import MapView from './components/MapView'
 import AddSpotForm from './components/AddSpotForm'
@@ -13,6 +14,9 @@ export default function App() {
   const [session, setSession] = useState(null)
   const [spots, setSpots] = useState([])
   const [pendingLocation, setPendingLocation] = useState(null)
+  // Cuadra detectada (OSM) para la ubicación pendiente, y si se está buscando.
+  const [pendingBlock, setPendingBlock] = useState(null)
+  const [blockLoading, setBlockLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [recenterTrigger, setRecenterTrigger] = useState(0)
   const [message, setMessage] = useState(null)
@@ -28,6 +32,40 @@ export default function App() {
 
   // Notificaciones de proximidad a trapitos cercanos
   useProximityNotifications(position, spots, notifEnabled)
+
+  // --- Detectar la cuadra (OSM) de la ubicación pendiente ---
+  // Al elegir un punto, consultamos OpenStreetMap el tramo de calle por el que
+  // anda el trapito. Si falla, queda en null y se marca solo el punto (o se
+  // puede reintentar). Guardamos la promesa en curso para que el alta la espere
+  // y no termine guardando "solo el punto" por apurarse.
+  const blockPromiseRef = useRef(null)
+
+  const detectarCuadra = useCallback((loc) => {
+    setPendingBlock(null)
+    setBlockLoading(true)
+    const p = getBlockForPoint(loc.lat, loc.lng)
+      .catch(() => null)
+      .then((b) => {
+        // Solo aplicamos el resultado si sigue siendo la búsqueda vigente.
+        if (blockPromiseRef.current === p) {
+          setPendingBlock(b)
+          setBlockLoading(false)
+        }
+        return b
+      })
+    blockPromiseRef.current = p
+    return p
+  }, [])
+
+  useEffect(() => {
+    if (!pendingLocation) {
+      setPendingBlock(null)
+      setBlockLoading(false)
+      blockPromiseRef.current = null
+      return
+    }
+    detectarCuadra(pendingLocation)
+  }, [pendingLocation, detectarCuadra])
 
   // --- Autenticación ---
   useEffect(() => {
@@ -138,7 +176,14 @@ export default function App() {
       return
     }
     setSaving(true)
-    const { lat, lng } = pendingLocation
+    // Esperamos a que termine la detección de la cuadra (si sigue en curso),
+    // así no guardamos "solo el punto" por adelantarnos al proceso.
+    const block = blockPromiseRef.current ? await blockPromiseRef.current : pendingBlock
+    // Si detectamos la cuadra, usamos el punto proyectado sobre la calle;
+    // si no, el punto que marcó el usuario.
+    const { lat, lng } = block?.point
+      ? { lat: block.point[1], lng: block.point[0] }
+      : pendingLocation
     const { data, error } = await supabase
       .from('trapito_spots')
       .insert({
@@ -146,6 +191,8 @@ export default function App() {
         lng,
         // PostGIS espera el punto como WKT vía la columna geom
         geom: toPointWKT(lat, lng),
+        // La cuadra (si se detectó) como LINESTRING; null si solo hay punto.
+        geom_calle: block?.coords ? toLineWKT(block.coords) : null,
         calle: calle || null,
         descripcion: descripcion || null,
         created_by: session.user.id,
@@ -222,6 +269,7 @@ export default function App() {
         <MapView
           userPosition={position}
           spots={spots}
+          pendingBlock={pendingBlock}
           onMapClick={(loc) => setPendingLocation(loc)}
           recenterTrigger={recenterTrigger}
           onViewChange={loadSpots}
@@ -296,6 +344,9 @@ export default function App() {
       {pendingLocation && (
         <AddSpotForm
           location={pendingLocation}
+          block={pendingBlock}
+          blockLoading={blockLoading}
+          onRetryBlock={() => detectarCuadra(pendingLocation)}
           onSubmit={handleSubmitSpot}
           onCancel={() => setPendingLocation(null)}
           saving={saving}

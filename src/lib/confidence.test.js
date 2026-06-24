@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { confidenceScore, confidenceLevel, levelOpacity, levelLabel } from './confidence'
+import {
+  confidenceScore,
+  confidenceLevel,
+  levelOpacity,
+  levelColor,
+  levelLabel,
+} from './confidence'
 
 describe('confidenceScore', () => {
   it('resta desmentidos a confirmaciones', () => {
@@ -37,6 +43,18 @@ describe('levelOpacity', () => {
     expect(levelOpacity('dudoso')).toBe(0.4)
     expect(levelOpacity('confiable')).toBe(1)
     expect(levelOpacity('neutral')).toBe(0.8)
+  })
+})
+
+describe('levelColor', () => {
+  it('da un color distinto por nivel', () => {
+    const colores = new Set([
+      levelColor('dudoso'),
+      levelColor('confiable'),
+      levelColor('neutral'),
+    ])
+    expect(colores.size).toBe(3)
+    expect(levelColor('dudoso')).toMatch(/^#[0-9a-f]{6}$/i)
   })
 })
 

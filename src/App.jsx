@@ -68,28 +68,41 @@ export default function App() {
   }, [])
 
   // --- Guardar un nuevo trapito ---
-  async function handleSubmitSpot({ calle, descripcion }) {
+  async function handleSubmitSpot({ calle, descripcion, franjas }) {
     if (!session) {
       setMessage('Iniciá sesión para poder cargar un trapito.')
       return
     }
     setSaving(true)
     const { lat, lng } = pendingLocation
-    const { error } = await supabase.from('trapito_spots').insert({
-      lat,
-      lng,
-      // PostGIS espera el punto como WKT vía la columna geom
-      geom: toPointWKT(lat, lng),
-      calle: calle || null,
-      descripcion: descripcion || null,
-      created_by: session.user.id,
-    })
-    setSaving(false)
+    const { data, error } = await supabase
+      .from('trapito_spots')
+      .insert({
+        lat,
+        lng,
+        // PostGIS espera el punto como WKT vía la columna geom
+        geom: toPointWKT(lat, lng),
+        calle: calle || null,
+        descripcion: descripcion || null,
+        created_by: session.user.id,
+      })
+      .select('id')
+      .single()
 
     if (error) {
+      setSaving(false)
       setMessage('No se pudo guardar: ' + error.message)
       return
     }
+
+    // Las franjas elegidas quedan como confirmación del creador (no suma reputación).
+    if (franjas && franjas.length) {
+      await supabase.from('spot_reports').upsert(
+        { spot_id: data.id, user_id: session.user.id, tipo: 'confirma', franjas },
+        { onConflict: 'spot_id,user_id' }
+      )
+    }
+    setSaving(false)
     setPendingLocation(null)
     setMessage('¡Trapito marcado! Gracias por colaborar 🙌')
     loadSpots(lastViewRef.current)
@@ -97,16 +110,17 @@ export default function App() {
   }
 
   // --- Votar un trapito (confirmar / "ya no está") ---
-  async function handleReport(spotId, tipo, franjaElegida) {
+  async function handleReport(spotId, tipo, franjasElegidas) {
     if (!session) {
       setMessage('Iniciá sesión para votar.')
       return
     }
-    // Al confirmar usamos la franja que eligió el usuario; si no eligió, la actual.
-    const franja = tipo === 'confirma' ? franjaElegida || franjaFromDate() : null
+    // Al confirmar usamos las franjas elegidas; si no eligió ninguna, la actual.
+    const franjas =
+      tipo === 'confirma' ? (franjasElegidas?.length ? franjasElegidas : [franjaFromDate()]) : null
     // Un voto por usuario y trapito: si ya votó, se actualiza (upsert)
     const { error } = await supabase.from('spot_reports').upsert(
-      { spot_id: spotId, user_id: session.user.id, tipo, franja },
+      { spot_id: spotId, user_id: session.user.id, tipo, franjas },
       { onConflict: 'spot_id,user_id' }
     )
     if (error) {

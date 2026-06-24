@@ -52,6 +52,7 @@ src/
 │   ├── MapView.jsx           Mapa + marcadores + ViewportLoader + ClickHandler
 │   ├── AddSpotForm.jsx       Formulario de carga (hoja inferior)
 │   ├── SpotPopup.jsx         Popup de un trapito: votos, confianza, antigüedad
+│   ├── FranjaSelector.jsx    Selector múltiple de franjas (alta y confirmación)
 │   └── ReputationBadge.jsx   Badge con la reputación del usuario logueado
 └── test/
     └── setup.js              Setup global de los tests
@@ -63,7 +64,8 @@ supabase/
     ├── phase3_caducidad.sql        Fase 3: last_activity + expirar_trapitos
     ├── phase3_caducidad_cron.sql   Fase 3: programación con pg_cron (opcional)
     ├── phase4_reputacion.sql       Fase 4: función mi_reputacion
-    └── phase5_horarios.sql         Fase 5: franja + horarios en spots_cercanos
+    ├── phase5_horarios.sql         Fase 5: franja + horarios en spots_cercanos
+    └── phase6_franjas_multiples.sql Fase 6: franja -> franjas text[] (varias)
 ```
 
 ## Modelo de datos
@@ -89,7 +91,7 @@ Tabla `spot_reports` (votos de la comunidad — Fase 2):
 | `spot_id` | uuid | FK a `trapito_spots` (on delete cascade) |
 | `user_id` | uuid | FK a `auth.users` |
 | `tipo` | text | `confirma` o `desmiente` |
-| `franja` | text | franja horaria del avistaje (solo en confirmaciones) |
+| `franjas` | text[] | franjas horarias del avistaje (solo en confirmaciones; varias) |
 | `created_at` | timestamptz | — |
 | — | unique | `(spot_id, user_id)`: un voto por usuario y trapito |
 

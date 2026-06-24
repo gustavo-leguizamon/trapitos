@@ -19,7 +19,7 @@
 | 9 | Antigüedad de la marca | Muestra "visto hace N días" y avisa "por caducar" cuando se acerca al límite | ✅ | `src/lib/expiry.test.js` |
 | 10 | Caducidad automática | Trabajo programado que desactiva trapitos dudosos o sin actividad hace mucho | ✅ | — (función SQL `expirar_trapitos`) |
 | 11 | Reputación de usuarios | Badge con tu nivel (nuevo/colaborador/confiable/experto) según tus aportes | ✅ | `src/lib/reputation.test.js`, `src/components/ReputationBadge.test.jsx` |
-| 12 | Horarios del trapito | Muestra las franjas en que suele aparecer, según las confirmaciones | ✅ | `src/lib/schedule.test.js`, `src/components/SpotPopup.test.jsx` |
+| 12 | Horarios del trapito | Muestra las franjas en que suele aparecer; se eligen (varias) al confirmar y al dar de alta | ✅ | `src/lib/schedule.test.js`, `src/components/FranjaSelector.test.jsx`, `src/components/SpotPopup.test.jsx` |
 
 ## Detalle del flujo
 
@@ -70,14 +70,17 @@
   `⭐ Confiable` (20–49) · `🏆 Experto` (≥50). Se muestra como badge en la barra
   superior y se refresca al cargar o votar.
 
-### Horarios del trapito (Fase 5)
-- Al **Confirmo**, se abre un selector para **elegir la franja horaria** del avistaje;
-  la franja correspondiente a la hora actual viene marcada como "· ahora" (sugerida).
-  Si el usuario no elige, se usa la actual. La franja se guarda en `spot_reports`.
+### Horarios del trapito (Fase 5–6)
+- Tanto al **dar de alta** un trapito como al hacer **Confirmo**, se pueden **elegir
+  varias franjas horarias** (`FranjaSelector`). La franja de la hora actual viene
+  marcada como "· ahora" (sugerida). Si no se elige ninguna, se usa la actual.
+- Las franjas se guardan como arreglo en `spot_reports.franjas`. Al dar de alta, las
+  franjas quedan como una confirmación del creador (no suma reputación).
 - Franjas (`src/lib/schedule.js`): 🌙 Madrugada (0–5) · 🌅 Mañana (6–11) ·
   🌇 Tarde (12–18) · 🌃 Noche (19–23).
-- `spots_cercanos` devuelve `horarios` (jsonb con el conteo por franja) y el popup
-  muestra *"🕒 Suele estar: 🌇 Tarde (4) · 🌅 Mañana (1)"*, ordenado por cantidad.
+- `spots_cercanos` devuelve `horarios` (jsonb con el conteo por franja; una
+  confirmación suma a todas sus franjas) y el popup muestra
+  *"🕒 Suele estar: 🌇 Tarde (4) · 🌅 Mañana (1)"*, ordenado por cantidad.
 
 ## Funcionalidades planificadas (no implementadas)
 

@@ -3,6 +3,12 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SpotPopup from './SpotPopup'
 
+// Fijamos la franja "actual" para que la preselección sea determinista en los tests.
+vi.mock('../lib/schedule', async (importOriginal) => {
+  const actual = await importOriginal()
+  return { ...actual, franjaFromDate: () => 'tarde' }
+})
+
 const baseSpot = {
   id: 'abc',
   calle: 'Mitre y San Martín',
@@ -40,19 +46,39 @@ describe('SpotPopup', () => {
     expect(onReport).toHaveBeenCalledWith('abc', 'desmiente')
   })
 
-  it('"Confirmo" abre el selector y confirma con la franja elegida', async () => {
+  it('"Confirmo" abre el selector; "Confirmar" reporta con las franjas elegidas', async () => {
     const user = userEvent.setup()
     const onReport = vi.fn()
     render(<SpotPopup spot={baseSpot} canVote onReport={onReport} />)
 
-    // Al tocar Confirmo todavía no reporta: muestra el selector de franja
+    // Al tocar Confirmo todavía no reporta: muestra el selector de franjas
     await user.click(screen.getByRole('button', { name: /confirmo/i }))
     expect(onReport).not.toHaveBeenCalled()
     expect(screen.getByText(/en qué horario/i)).toBeInTheDocument()
 
-    // Elegir una franja confirma con ese valor
-    await user.click(screen.getByRole('button', { name: /mañana/i }))
-    expect(onReport).toHaveBeenCalledWith('abc', 'confirma', 'manana')
+    // Recién al tocar "Confirmar" reporta con un array de franjas (la actual viene sugerida)
+    await user.click(screen.getByRole('button', { name: /^confirmar$/i }))
+    expect(onReport).toHaveBeenCalledTimes(1)
+    const [spotId, tipo, franjas] = onReport.mock.calls[0]
+    expect(spotId).toBe('abc')
+    expect(tipo).toBe('confirma')
+    expect(Array.isArray(franjas)).toBe(true)
+    expect(franjas.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('permite elegir varias franjas antes de confirmar', async () => {
+    const user = userEvent.setup()
+    const onReport = vi.fn()
+    render(<SpotPopup spot={baseSpot} canVote onReport={onReport} />)
+
+    await user.click(screen.getByRole('button', { name: /confirmo/i }))
+    // Sumamos madrugada y noche a lo ya sugerido y confirmamos
+    await user.click(screen.getByRole('button', { name: /madrugada/i }))
+    await user.click(screen.getByRole('button', { name: /noche/i }))
+    await user.click(screen.getByRole('button', { name: /^confirmar$/i }))
+
+    const franjas = onReport.mock.calls[0][2]
+    expect(franjas).toEqual(expect.arrayContaining(['madrugada', 'noche']))
   })
 
   it('se puede cancelar el selector de franja', async () => {

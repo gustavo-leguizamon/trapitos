@@ -87,11 +87,13 @@ grant select on public.user_reputation to anon, authenticated;
 -- -------------------------------------------------------------
 -- Se dropea primero porque cambia el tipo de retorno respecto a la Fase 1.
 drop function if exists public.spots_cercanos(double precision, double precision, double precision);
+drop function if exists public.spots_cercanos(double precision, double precision, double precision, boolean);
 
 create or replace function public.spots_cercanos(
   p_lat double precision,
   p_lng double precision,
-  p_radio_m double precision default 2000
+  p_radio_m double precision default 2000,
+  p_incluir_inactivos boolean default false
 )
 returns table (
   id              uuid,
@@ -133,7 +135,9 @@ as $$
   from public.trapito_spots s
   left join public.spot_reports r on r.spot_id = s.id
   left join public.user_reputation ur on ur.user_id = s.created_by
-  where s.status = 'activo'
+  -- Siempre los activos; los inactivos (caducados) solo si se piden.
+  -- Los 'oculto' (por abuso) nunca se devuelven.
+  where (s.status = 'activo' or (p_incluir_inactivos and s.status = 'inactivo'))
     and st_dwithin(
       s.geom,
       st_setsrid(st_makepoint(p_lng, p_lat), 4326)::geography,
@@ -341,3 +345,47 @@ create policy "el usuario actualiza su reporte"
   to authenticated
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- -------------------------------------------------------------
+-- Reactivar una marca caducada (Fase 10)
+-- security definer: revive SOLO trapitos 'inactivo' (caducados) -> 'activo'.
+-- Nunca revive los 'oculto' (ocultados por abuso). Registra una confirmación
+-- fresca del reactivador para refrescar la actividad (y no recaducar al toque).
+-- -------------------------------------------------------------
+create or replace function public.reactivar_trapito(
+  p_spot_id uuid,
+  p_franjas text[] default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_updated integer;
+begin
+  if v_uid is null then
+    return false;
+  end if;
+
+  update public.trapito_spots
+  set status = 'activo'
+  where id = p_spot_id and status = 'inactivo';
+  get diagnostics v_updated = row_count;
+
+  if v_updated = 0 then
+    return false; -- no estaba caducado (o estaba oculto): no se reactiva
+  end if;
+
+  -- Confirmación fresca del reactivador (refresca last_activity)
+  insert into public.spot_reports (spot_id, user_id, tipo, franjas, created_at)
+  values (p_spot_id, v_uid, 'confirma', p_franjas, now())
+  on conflict (spot_id, user_id)
+  do update set tipo = 'confirma', franjas = excluded.franjas, created_at = now();
+
+  return true;
+end;
+$$;
+
+grant execute on function public.reactivar_trapito(uuid, text[]) to authenticated;

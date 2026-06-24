@@ -10,6 +10,10 @@ y versionado [SemVer](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Added
+- **Fase 10 — Reactivar marcas caducadas:** toggle ♻️ que muestra los caducados y
+  un botón "Reactivar" en el popup; RPC `reactivar_trapito` (security definer) que
+  revive solo `inactivo` → `activo` (nunca `oculto`) y refresca la actividad.
+  `spots_cercanos` acepta `p_incluir_inactivos`.
 - **Fase 9 — Moderación / reportes de abuso:** botón "⚠️ Reportar" con motivo
   (`src/lib/abuse.js`); tabla `abuse_reports` con RLS y un trigger que oculta el
   trapito (`status = 'oculto'`) al llegar a 3 reportes de usuarios distintos.

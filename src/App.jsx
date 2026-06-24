@@ -20,8 +20,11 @@ export default function App() {
   const [notifEnabled, setNotifEnabled] = useState(
     () => localStorage.getItem('notifProximidad') === '1'
   )
+  const [verCaducados, setVerCaducados] = useState(false)
   // Última área visible del mapa, para recargar tras agregar un trapito
   const lastViewRef = useRef(null)
+  // Espejo en ref para que loadSpots (estable) lea el valor actual sin recrearse
+  const verCaducadosRef = useRef(false)
 
   // Notificaciones de proximidad a trapitos cercanos
   useProximityNotifications(position, spots, notifEnabled)
@@ -79,6 +82,37 @@ export default function App() {
     setMessage('Te avisaremos cuando estés cerca de un trapito 🔔')
   }
 
+  // Mostrar u ocultar los trapitos caducados en el mapa
+  function toggleVerCaducados() {
+    const nuevo = !verCaducados
+    setVerCaducados(nuevo)
+    verCaducadosRef.current = nuevo
+    loadSpots(lastViewRef.current)
+  }
+
+  // Reactivar un trapito caducado (lo veo de nuevo ahora)
+  async function handleReactivar(spotId) {
+    if (!session) {
+      setMessage('Iniciá sesión para reactivar.')
+      return
+    }
+    const { data, error } = await supabase.rpc('reactivar_trapito', {
+      p_spot_id: spotId,
+      p_franjas: [franjaFromDate()],
+    })
+    if (error) {
+      setMessage('No se pudo reactivar: ' + error.message)
+      return
+    }
+    if (!data) {
+      setMessage('Ese trapito ya no se puede reactivar.')
+      return
+    }
+    setMessage('¡Trapito reactivado! Gracias 🙌')
+    loadSpots(lastViewRef.current)
+    loadReputation()
+  }
+
   // --- Cargar los trapitos del área visible del mapa ---
   const loadSpots = useCallback(async (view) => {
     if (!view) return
@@ -88,6 +122,7 @@ export default function App() {
       p_lng: view.lng,
       // un poco más que el radio visible, para incluir lo que está justo al borde
       p_radio_m: paddedRadius(view.radius),
+      p_incluir_inactivos: verCaducadosRef.current,
     })
     if (error) {
       setMessage('Error al cargar trapitos: ' + error.message)
@@ -193,6 +228,7 @@ export default function App() {
           canVote={!!session}
           onReport={handleReport}
           onAbuse={handleAbuse}
+          onReactivar={handleReactivar}
         />
       </div>
 
@@ -200,6 +236,14 @@ export default function App() {
       <header className="topbar">
         <span className="brand">🅿️ Trapitos</span>
         <div className="topbar-right">
+          <button
+            className="icon-btn"
+            onClick={toggleVerCaducados}
+            title={verCaducados ? 'Ocultar trapitos caducados' : 'Ver trapitos caducados'}
+            aria-pressed={verCaducados}
+          >
+            ♻️
+          </button>
           <button
             className="icon-btn"
             onClick={toggleNotificaciones}

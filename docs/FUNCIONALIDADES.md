@@ -23,6 +23,7 @@
 | 13 | Notificaciones por proximidad | Avisa (con la app abierta) cuando te acercás a un trapito; se activa con 🔔 | ✅ | `src/lib/proximity.test.js` |
 | 14 | Reputación del autor en la marca | El popup muestra el nivel de reputación de quien cargó el trapito | ✅ | `src/components/SpotPopup.test.jsx` |
 | 15 | Moderación / reportes de abuso | "⚠️ Reportar" con motivo; al llegar a 3 reportes distintos el trapito se oculta | ✅ | `src/lib/abuse.test.js`, `src/components/SpotPopup.test.jsx` |
+| 16 | Reactivar caducados | Toggle ♻️ para ver los caducados y reactivarlos (no los ocultos por abuso) | ✅ | `src/components/SpotPopup.test.jsx` |
 
 ## Detalle del flujo
 
@@ -61,6 +62,15 @@
 - Se programa con **pg_cron** para correr a diario (ver
   `supabase/migrations/phase3_caducidad_cron.sql`). Es reversible: cambiar el
   `status` de vuelta a `activo` reactiva la marca.
+
+### Reactivar caducados (Fase 10)
+- El toggle **♻️** de la barra activa "ver caducados": `spots_cercanos` recibe
+  `p_incluir_inactivos` y devuelve también los `inactivo` (atenuados en el mapa).
+  Los `oculto` (por abuso) **nunca** se muestran.
+- En el popup de un caducado aparece **"♻️ Reactivar"**. Llama a la RPC
+  `reactivar_trapito` (security definer) que pasa el `status` a `activo` **solo si
+  estaba `inactivo`** (nunca revive un `oculto`) y registra una confirmación fresca
+  del reactivador (refresca la actividad para que no recaduque enseguida).
 
 ### Notificaciones por proximidad (Fase 7)
 - Botón 🔔 en la barra superior activa/desactiva los avisos (pide permiso de

@@ -144,6 +144,19 @@ describe('SpotPopup', () => {
     expect(screen.queryByText(/cargado por/i)).not.toBeInTheDocument()
   })
 
+  it('en un caducado muestra Reactivar (no las acciones de voto) y llama onReactivar', async () => {
+    const user = userEvent.setup()
+    const onReactivar = vi.fn()
+    const spot = { ...baseSpot, status: 'inactivo' }
+    render(<SpotPopup spot={spot} canVote onReport={vi.fn()} onReactivar={onReactivar} />)
+
+    expect(screen.getByText(/caducado/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /confirmo/i })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /reactivar/i }))
+    expect(onReactivar).toHaveBeenCalledWith('abc')
+  })
+
   it('reporta abuso con el motivo elegido', async () => {
     const user = userEvent.setup()
     const onAbuse = vi.fn()

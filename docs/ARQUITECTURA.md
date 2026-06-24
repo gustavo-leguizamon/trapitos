@@ -67,7 +67,8 @@ supabase/
     ├── phase3_caducidad_cron.sql   Fase 3: programación con pg_cron (opcional)
     ├── phase4_reputacion.sql       Fase 4: función mi_reputacion
     ├── phase5_horarios.sql         Fase 5: franja + horarios en spots_cercanos
-    └── phase6_franjas_multiples.sql Fase 6: franja -> franjas text[] (varias)
+    ├── phase6_franjas_multiples.sql Fase 6: franja -> franjas text[] (varias)
+    └── phase8_autor_reputacion.sql Fase 8: vista user_reputation + autor en spots
 ```
 
 ## Modelo de datos
@@ -112,10 +113,12 @@ Está pensada para ejecutarse de forma programada con **pg_cron** (a diario). El
 `execute` está revocado de `anon`/`authenticated`: es una tarea de mantenimiento.
 
 ### Reputación de usuarios
-La función `mi_reputacion()` es **security definer** con `search_path` fijo: puede
-contar todas las marcas/votos del usuario (incluso inactivas) pero está acotada a
-`auth.uid()`, por lo que no expone datos de terceros. Excluye los autovotos. El
-puntaje y el nivel se calculan en el front (`src/lib/reputation.js`).
+La vista `user_reputation` agrega por usuario (marcas creadas, confirmaciones y
+desmentidos recibidos —sin autovotos— y votos emitidos). En PG15 corre con permisos
+del dueño, así que ve todo sin chocar con RLS. Es la **fuente única**:
+- `mi_reputacion()` (security definer) la filtra por `auth.uid()` para tu badge.
+- `spots_cercanos` la une por `created_by` y devuelve el objeto `autor` por marca.
+El puntaje y el nivel se calculan en el front (`src/lib/reputation.js`).
 
 ### Seguridad (RLS)
 Row Level Security activado en ambas tablas.

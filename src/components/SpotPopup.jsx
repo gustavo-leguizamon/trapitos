@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { confidenceLevel, levelLabel } from '../lib/confidence'
 import { freshnessText, isAboutToExpire } from '../lib/expiry'
 import { rankedFranjas, franjaFromDate } from '../lib/schedule'
+import { reputationScore, reputationLevel, reputationLabel } from '../lib/reputation'
 import FranjaSelector from './FranjaSelector'
 
 // Contenido del popup de un trapito: datos, votos de la comunidad y acciones.
@@ -12,6 +13,7 @@ export default function SpotPopup({ spot, canVote, onReport }) {
   const seen = freshnessText(spot.last_activity)
   const expiring = isAboutToExpire(spot.last_activity)
   const franjas = rankedFranjas(spot.horarios)
+  const autorLevel = spot.autor ? reputationLevel(reputationScore(spot.autor)) : null
 
   // Al confirmar, el usuario elige una o varias franjas; la actual viene sugerida.
   const [picking, setPicking] = useState(false)
@@ -42,6 +44,8 @@ export default function SpotPopup({ spot, canVote, onReport }) {
           🕒 Suele estar: {franjas.map((f) => `${f.label} (${f.cantidad})`).join(' · ')}
         </p>
       )}
+
+      {autorLevel && <p className="autor">👤 Cargado por: {reputationLabel(autorLevel)}</p>}
 
       <div className="votes">
         <span title="Confirmaciones">👍 {confirma}</span>

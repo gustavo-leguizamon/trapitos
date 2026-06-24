@@ -130,4 +130,17 @@ describe('SpotPopup', () => {
     render(<SpotPopup spot={baseSpot} canVote onReport={vi.fn()} />)
     expect(screen.queryByText(/suele estar/i)).not.toBeInTheDocument()
   })
+
+  it('muestra la reputación del autor cuando viene en el spot', () => {
+    // 5*2 + 15*3 = 55 -> experto
+    const spot = { ...baseSpot, autor: { spotsCreados: 5, confirmacionesRecibidas: 15 } }
+    render(<SpotPopup spot={spot} canVote onReport={vi.fn()} />)
+    const linea = screen.getByText(/cargado por/i)
+    expect(linea).toHaveTextContent(/experto/i)
+  })
+
+  it('no muestra autor si el spot no lo trae', () => {
+    render(<SpotPopup spot={baseSpot} canVote onReport={vi.fn()} />)
+    expect(screen.queryByText(/cargado por/i)).not.toBeInTheDocument()
+  })
 })

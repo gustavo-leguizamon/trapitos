@@ -307,6 +307,12 @@ body,
   color: #374151;
 }
 
+.spot-popup .autor {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
 .spot-popup .votes {
   display: flex;
   gap: 12px;

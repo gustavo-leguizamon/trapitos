@@ -21,6 +21,7 @@
 | 11 | Reputación de usuarios | Badge con tu nivel (nuevo/colaborador/confiable/experto) según tus aportes | ✅ | `src/lib/reputation.test.js`, `src/components/ReputationBadge.test.jsx` |
 | 12 | Horarios del trapito | Muestra las franjas en que suele aparecer; se eligen (varias) al confirmar y al dar de alta | ✅ | `src/lib/schedule.test.js`, `src/components/FranjaSelector.test.jsx`, `src/components/SpotPopup.test.jsx` |
 | 13 | Notificaciones por proximidad | Avisa (con la app abierta) cuando te acercás a un trapito; se activa con 🔔 | ✅ | `src/lib/proximity.test.js` |
+| 14 | Reputación del autor en la marca | El popup muestra el nivel de reputación de quien cargó el trapito | ✅ | `src/components/SpotPopup.test.jsx` |
 
 ## Detalle del flujo
 
@@ -81,6 +82,10 @@
 - Niveles por puntaje: `🌱 Nuevo` (<5) · `🙂 Colaborador` (5–19) ·
   `⭐ Confiable` (20–49) · `🏆 Experto` (≥50). Se muestra como badge en la barra
   superior y se refresca al cargar o votar.
+- **Reputación del autor (Fase 8):** `spots_cercanos` devuelve un objeto `autor`
+  con los agregados del creador (calculados por la vista `user_reputation`), y el
+  popup muestra su nivel ("👤 Cargado por: ⭐ Confiable"). Misma fórmula que la
+  reputación propia; `mi_reputacion` también lee de esa vista.
 
 ### Horarios del trapito (Fase 5–6)
 - Tanto al **dar de alta** un trapito como al hacer **Confirmo**, se pueden **elegir

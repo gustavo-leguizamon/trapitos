@@ -313,6 +313,25 @@ body,
   color: #6b7280;
 }
 
+.spot-popup .caducado-banner {
+  margin: 8px 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #9ca3af;
+}
+
+.spot-popup .reactivar-btn {
+  width: 100%;
+  border: none;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #dcfce7;
+  color: #15803d;
+}
+
 .spot-popup .votes {
   display: flex;
   gap: 12px;

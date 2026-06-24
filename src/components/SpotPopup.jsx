@@ -7,7 +7,8 @@ import { ABUSE_MOTIVOS } from '../lib/abuse'
 import FranjaSelector from './FranjaSelector'
 
 // Contenido del popup de un trapito: datos, votos de la comunidad y acciones.
-export default function SpotPopup({ spot, canVote, onReport, onAbuse }) {
+export default function SpotPopup({ spot, canVote, onReport, onAbuse, onReactivar }) {
+  const caducado = spot.status === 'inactivo'
   const confirma = spot.confirma_count ?? 0
   const desmiente = spot.desmiente_count ?? 0
   const level = confidenceLevel(confirma, desmiente)
@@ -38,7 +39,11 @@ export default function SpotPopup({ spot, canVote, onReport, onAbuse }) {
       <strong>{spot.calle || 'Trapito'}</strong>
       {spot.descripcion && <p className="desc">{spot.descripcion}</p>}
 
-      <p className={`level level-${level}`}>{levelLabel(level)}</p>
+      {caducado ? (
+        <p className="caducado-banner">⌛ Caducado</p>
+      ) : (
+        <p className={`level level-${level}`}>{levelLabel(level)}</p>
+      )}
 
       {seen && (
         <p className="freshness">
@@ -61,7 +66,11 @@ export default function SpotPopup({ spot, canVote, onReport, onAbuse }) {
       </div>
 
       {!canVote ? (
-        <p className="vote-hint">Tocá "Participar" para votar</p>
+        <p className="vote-hint">Tocá "Participar" para {caducado ? 'reactivar' : 'votar'}</p>
+      ) : caducado ? (
+        <button className="confirm reactivar-btn" onClick={() => onReactivar?.(spot.id)}>
+          ♻️ Reactivar (lo vi ahora)
+        </button>
       ) : picking ? (
         <div className="franja-picker">
           <p className="franja-q">¿En qué horario(s) lo viste?</p>

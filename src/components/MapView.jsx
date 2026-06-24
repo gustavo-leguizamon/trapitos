@@ -116,6 +116,7 @@ export default function MapView({
   canVote,
   onReport,
   onAbuse,
+  onReactivar,
 }) {
   const center = userPosition || { lat: -34.6037, lng: -58.3816 } // CABA por defecto
   // Momento de la última interacción con un popup (para no abrir el alta por error).
@@ -145,18 +146,26 @@ export default function MapView({
 
       {spots.map((spot) => {
         const level = confidenceLevel(spot.confirma_count, spot.desmiente_count)
+        // Los caducados (inactivo) se ven más atenuados que los activos.
+        const opacity = spot.status === 'inactivo' ? 0.35 : levelOpacity(level)
         return (
           <Marker
             key={spot.id}
             position={[spot.lat, spot.lng]}
             icon={defaultIcon}
-            opacity={levelOpacity(level)}
+            opacity={opacity}
           >
             {/* closeOnClick=false: que no se cierre al elegir franjas/confirmar.
                 Se cierra con la X o al abrir otro trapito (autoClose por defecto). */}
             <Popup closeOnClick={false}>
               <PopupContent interactionRef={popupInteractRef}>
-                <SpotPopup spot={spot} canVote={canVote} onReport={onReport} onAbuse={onAbuse} />
+                <SpotPopup
+                  spot={spot}
+                  canVote={canVote}
+                  onReport={onReport}
+                  onAbuse={onAbuse}
+                  onReactivar={onReactivar}
+                />
               </PopupContent>
             </Popup>
           </Marker>

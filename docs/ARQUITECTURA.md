@@ -69,7 +69,8 @@ supabase/
     ├── phase5_horarios.sql         Fase 5: franja + horarios en spots_cercanos
     ├── phase6_franjas_multiples.sql Fase 6: franja -> franjas text[] (varias)
     ├── phase8_autor_reputacion.sql Fase 8: vista user_reputation + autor en spots
-    └── phase9_moderacion.sql       Fase 9: abuse_reports + trigger de ocultado
+    ├── phase9_moderacion.sql       Fase 9: abuse_reports + trigger de ocultado
+    └── phase10_reactivar.sql       Fase 10: incluir inactivos + reactivar_trapito
 ```
 
 ## Modelo de datos
@@ -126,6 +127,10 @@ La función `expirar_trapitos(dias_inactividad, umbral_dudoso)` pone en `inactiv
 los trapitos muy dudosos o sin actividad hace mucho, y devuelve cuántos desactivó.
 Está pensada para ejecutarse de forma programada con **pg_cron** (a diario). El
 `execute` está revocado de `anon`/`authenticated`: es una tarea de mantenimiento.
+
+La función `reactivar_trapito(spot_id, franjas)` (security definer) hace lo inverso:
+pasa un trapito `inactivo` a `activo` (nunca un `oculto`) y registra una confirmación
+fresca. `spots_cercanos` acepta `p_incluir_inactivos` para mostrar los caducados.
 
 ### Reputación de usuarios
 La vista `user_reputation` agrega por usuario (marcas creadas, confirmaciones y

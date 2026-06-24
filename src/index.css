@@ -351,6 +351,21 @@ body,
   color: #9ca3af;
 }
 
+.spot-popup .report-link {
+  display: block;
+  margin: 8px auto 0;
+  border: none;
+  background: none;
+  color: #9ca3af;
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.spot-popup .report-link:hover {
+  color: #b91c1c;
+}
+
 /* Selector de franja (popup y alta) */
 .franja-q {
   margin: 0 0 6px;

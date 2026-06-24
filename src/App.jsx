@@ -161,6 +161,26 @@ export default function App() {
     loadReputation()
   }
 
+  // --- Reportar un trapito por abuso ---
+  async function handleAbuse(spotId, motivo) {
+    if (!session) {
+      setMessage('Iniciá sesión para reportar.')
+      return
+    }
+    // Un reporte por usuario y trapito (upsert: puede cambiar el motivo)
+    const { error } = await supabase.from('abuse_reports').upsert(
+      { spot_id: spotId, user_id: session.user.id, motivo },
+      { onConflict: 'spot_id,user_id' }
+    )
+    if (error) {
+      setMessage('No se pudo enviar el reporte: ' + error.message)
+      return
+    }
+    setMessage('Gracias, recibimos tu reporte 🙏')
+    // Si superó el umbral, el trigger lo ocultó: recargamos para reflejarlo.
+    loadSpots(lastViewRef.current)
+  }
+
   return (
     <div className="app">
       <div className="map-wrap">
@@ -172,6 +192,7 @@ export default function App() {
           onViewChange={loadSpots}
           canVote={!!session}
           onReport={handleReport}
+          onAbuse={handleAbuse}
         />
       </div>
 

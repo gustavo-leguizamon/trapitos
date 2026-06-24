@@ -22,6 +22,7 @@
 | 12 | Horarios del trapito | Muestra las franjas en que suele aparecer; se eligen (varias) al confirmar y al dar de alta | ✅ | `src/lib/schedule.test.js`, `src/components/FranjaSelector.test.jsx`, `src/components/SpotPopup.test.jsx` |
 | 13 | Notificaciones por proximidad | Avisa (con la app abierta) cuando te acercás a un trapito; se activa con 🔔 | ✅ | `src/lib/proximity.test.js` |
 | 14 | Reputación del autor en la marca | El popup muestra el nivel de reputación de quien cargó el trapito | ✅ | `src/components/SpotPopup.test.jsx` |
+| 15 | Moderación / reportes de abuso | "⚠️ Reportar" con motivo; al llegar a 3 reportes distintos el trapito se oculta | ✅ | `src/lib/abuse.test.js`, `src/components/SpotPopup.test.jsx` |
 
 ## Detalle del flujo
 
@@ -71,6 +72,14 @@
   `src/hooks/useProximityNotifications.js`.
 - **Limitación:** funciona con la app abierta (primer o segundo plano). No hay
   geofencing en background con la app cerrada (no es confiable en una PWA).
+
+### Moderación / reportes de abuso (Fase 9)
+- En el popup hay un "⚠️ Reportar" (solo logueado) con motivos: Ofensivo / Falso /
+  Spam / Otro (`src/lib/abuse.js`).
+- Se guarda en `abuse_reports` (un reporte por usuario y trapito). RLS: cada uno crea
+  y ve solo lo suyo (no es público).
+- Un **trigger** (security definer) cuenta usuarios distintos: al llegar a **3**, pone
+  el trapito en `status = 'oculto'` y deja de mostrarse. Reversible por un admin.
 
 ### Reputación de usuarios (Fase 4)
 - La función SQL `mi_reputacion()` (security definer, acotada a `auth.uid()`)

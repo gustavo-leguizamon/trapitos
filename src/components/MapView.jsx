@@ -115,6 +115,7 @@ export default function MapView({
   onViewChange,
   canVote,
   onReport,
+  onAbuse,
 }) {
   const center = userPosition || { lat: -34.6037, lng: -58.3816 } // CABA por defecto
   // Momento de la última interacción con un popup (para no abrir el alta por error).
@@ -155,7 +156,7 @@ export default function MapView({
                 Se cierra con la X o al abrir otro trapito (autoClose por defecto). */}
             <Popup closeOnClick={false}>
               <PopupContent interactionRef={popupInteractRef}>
-                <SpotPopup spot={spot} canVote={canVote} onReport={onReport} />
+                <SpotPopup spot={spot} canVote={canVote} onReport={onReport} onAbuse={onAbuse} />
               </PopupContent>
             </Popup>
           </Marker>

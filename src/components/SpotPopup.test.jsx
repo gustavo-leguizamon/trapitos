@@ -143,4 +143,17 @@ describe('SpotPopup', () => {
     render(<SpotPopup spot={baseSpot} canVote onReport={vi.fn()} />)
     expect(screen.queryByText(/cargado por/i)).not.toBeInTheDocument()
   })
+
+  it('reporta abuso con el motivo elegido', async () => {
+    const user = userEvent.setup()
+    const onAbuse = vi.fn()
+    render(<SpotPopup spot={baseSpot} canVote onReport={vi.fn()} onAbuse={onAbuse} />)
+
+    await user.click(screen.getByRole('button', { name: /reportar/i }))
+    expect(onAbuse).not.toHaveBeenCalled()
+    expect(screen.getByText(/por qué lo reportás/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^spam$/i }))
+    expect(onAbuse).toHaveBeenCalledWith('abc', 'spam')
+  })
 })

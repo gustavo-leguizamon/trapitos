@@ -10,6 +10,9 @@ y versionado [SemVer](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Added
+- **Fase 9 — Moderación / reportes de abuso:** botón "⚠️ Reportar" con motivo
+  (`src/lib/abuse.js`); tabla `abuse_reports` con RLS y un trigger que oculta el
+  trapito (`status = 'oculto'`) al llegar a 3 reportes de usuarios distintos.
 - **Fase 8 — Reputación del autor en cada marca:** el popup muestra el nivel de
   quien cargó el trapito. Nueva vista `user_reputation` (fuente única); `spots_cercanos`
   devuelve `autor` y `mi_reputacion` se refactorizó para leer de la vista.

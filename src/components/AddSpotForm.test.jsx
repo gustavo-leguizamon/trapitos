@@ -18,7 +18,8 @@ describe('AddSpotForm', () => {
   })
 
   it('envía calle, descripción (sin espacios) y las franjas al guardar', async () => {
-    const user = userEvent.setup()
+    // delay: null => tipeo instantáneo, evita timeouts por lentitud bajo carga.
+    const user = userEvent.setup({ delay: null })
     const onSubmit = vi.fn()
     render(<AddSpotForm location={location} onSubmit={onSubmit} onCancel={vi.fn()} />)
 

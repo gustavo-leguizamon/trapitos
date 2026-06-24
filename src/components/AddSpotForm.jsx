@@ -1,13 +1,27 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { franjaFromDate } from '../lib/schedule'
 import FranjaSelector from './FranjaSelector'
 
 // Formulario para cargar un nuevo trapito en la ubicación seleccionada.
-export default function AddSpotForm({ location, onSubmit, onCancel, saving }) {
+export default function AddSpotForm({
+  location,
+  block,
+  blockLoading,
+  onRetryBlock,
+  onSubmit,
+  onCancel,
+  saving,
+}) {
   const [calle, setCalle] = useState('')
+  const [calleTocada, setCalleTocada] = useState(false)
   const [descripcion, setDescripcion] = useState('')
   // Por defecto sugerimos la franja actual; el usuario puede elegir varias.
   const [franjas, setFranjas] = useState([franjaFromDate()])
+
+  // Cuando OSM detecta el nombre de la calle, lo sugerimos (si el usuario no escribió).
+  useEffect(() => {
+    if (block?.name && !calleTocada) setCalle(block.name)
+  }, [block, calleTocada])
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -22,12 +36,32 @@ export default function AddSpotForm({ location, onSubmit, onCancel, saving }) {
           📍 {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
         </p>
 
+        <p className={`block-status${!blockLoading && !block ? ' block-status-warn' : ''}`}>
+          {blockLoading ? (
+            '🛣️ Detectando la cuadra…'
+          ) : block ? (
+            `🛣️ Se pintará la cuadra${block.name ? ` de ${block.name}` : ''}`
+          ) : (
+            <>
+              📍 No se detectó la cuadra: se marcará solo el punto.
+              {onRetryBlock && (
+                <button type="button" className="block-retry" onClick={onRetryBlock}>
+                  🔄 Reintentar
+                </button>
+              )}
+            </>
+          )}
+        </p>
+
         <label>
           Calle / esquina
           <input
             type="text"
             value={calle}
-            onChange={(e) => setCalle(e.target.value)}
+            onChange={(e) => {
+              setCalleTocada(true)
+              setCalle(e.target.value)
+            }}
             placeholder="Ej: Av. Corrientes y Callao"
             autoFocus
           />
@@ -50,8 +84,8 @@ export default function AddSpotForm({ location, onSubmit, onCancel, saving }) {
           <button type="button" className="secondary" onClick={onCancel} disabled={saving}>
             Cancelar
           </button>
-          <button type="submit" disabled={saving}>
-            {saving ? 'Guardando…' : 'Guardar'}
+          <button type="submit" disabled={saving || blockLoading}>
+            {saving ? 'Guardando…' : blockLoading ? 'Detectando cuadra…' : 'Guardar'}
           </button>
         </div>
       </form>

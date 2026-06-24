@@ -27,6 +27,18 @@ export function levelOpacity(level) {
   }
 }
 
+// Color de la cuadra según el nivel de confianza (para pintarla en el mapa).
+export function levelColor(level) {
+  switch (level) {
+    case 'dudoso':
+      return '#d32f2f' // rojo
+    case 'confiable':
+      return '#2e7d32' // verde
+    default:
+      return '#f9a825' // ámbar (sin confirmar)
+  }
+}
+
 // Etiqueta legible para mostrar en el popup.
 export function levelLabel(level) {
   switch (level) {

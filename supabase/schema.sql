@@ -17,6 +17,9 @@ create table if not exists public.trapito_spots (
   lng         double precision not null,
   calle       text,
   descripcion text,
+  -- geom_calle guarda la cuadra (tramo de calle) por la que anda el trapito.
+  -- Nullable: las marcas viejas (solo punto) siguen funcionando.
+  geom_calle  geography(LineString, 4326),
   created_by  uuid references auth.users(id) on delete set null,
   created_at  timestamptz not null default now(),
   -- 'activo' por defecto; se puede "enfriar" en fases futuras
@@ -107,7 +110,8 @@ returns table (
   desmiente_count bigint,
   last_activity   timestamptz,
   horarios        jsonb,
-  autor           jsonb
+  autor           jsonb,
+  calle_geom      jsonb
 )
 language sql
 stable
@@ -131,7 +135,9 @@ as $$
       'confirmacionesRecibidas', coalesce(ur.confirmaciones_recibidas, 0),
       'desmentidosRecibidos',    coalesce(ur.desmentidos_recibidos, 0),
       'votosEmitidos',           coalesce(ur.votos_emitidos, 0)
-    ) end as autor
+    ) end as autor,
+    -- La cuadra como GeoJSON (null si la marca es vieja y solo tiene punto)
+    st_asgeojson(s.geom_calle)::jsonb as calle_geom
   from public.trapito_spots s
   left join public.spot_reports r on r.spot_id = s.id
   left join public.user_reputation ur on ur.user_id = s.created_by

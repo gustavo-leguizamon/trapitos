@@ -188,9 +188,35 @@ body,
 }
 
 .sheet .coords {
-  margin: 0 0 16px;
+  margin: 0 0 8px;
   color: #6b7280;
   font-size: 13px;
+}
+
+.sheet .block-status {
+  margin: 0 0 16px;
+  padding: 8px 10px;
+  background: #eef2ff;
+  border-radius: 8px;
+  color: #3730a3;
+  font-size: 13px;
+}
+
+.sheet .block-status.block-status-warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.sheet .block-status .block-retry {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border: none;
+  border-radius: 6px;
+  background: #92400e;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .sheet label {

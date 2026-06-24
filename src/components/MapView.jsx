@@ -1,8 +1,8 @@
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Polyline, Popup, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { useEffect, useRef } from 'react'
 import SpotPopup from './SpotPopup'
-import { confidenceLevel, levelOpacity } from '../lib/confidence'
+import { confidenceLevel, levelOpacity, levelColor } from '../lib/confidence'
 
 // Arregla los íconos por defecto de Leaflet (que se rompen con bundlers como Vite)
 import iconUrl from 'leaflet/dist/images/marker-icon.png'
@@ -25,6 +25,14 @@ const userIcon = L.divIcon({
   iconSize: [18, 18],
   iconAnchor: [9, 9],
 })
+
+// Color gris para las cuadras de trapitos caducados.
+const CADUCADO_COLOR = '#9e9e9e'
+
+// Convierte coords GeoJSON [[lng,lat], ...] al orden [[lat,lng], ...] de Leaflet.
+function toLatLngs(coords) {
+  return coords.map(([lng, lat]) => [lat, lng])
+}
 
 // Envuelve el contenido del popup. Marca una bandera de tiempo cuando el usuario
 // interactúa con el popup, para que el handler de click del mapa pueda ignorar
@@ -110,6 +118,7 @@ function ViewportLoader({ onViewChange }) {
 export default function MapView({
   userPosition,
   spots,
+  pendingBlock,
   onMapClick,
   recenterTrigger,
   onViewChange,
@@ -144,30 +153,56 @@ export default function MapView({
         </Marker>
       )}
 
+      {/* Vista previa de la cuadra detectada al marcar un trapito nuevo */}
+      {pendingBlock?.coords?.length >= 2 && (
+        <Polyline
+          positions={toLatLngs(pendingBlock.coords)}
+          pathOptions={{ color: '#1565c0', weight: 7, opacity: 0.7, dashArray: '6 8' }}
+        />
+      )}
+
       {spots.map((spot) => {
         const level = confidenceLevel(spot.confirma_count, spot.desmiente_count)
-        // Los caducados (inactivo) se ven más atenuados que los activos.
-        const opacity = spot.status === 'inactivo' ? 0.35 : levelOpacity(level)
+        const caducado = spot.status === 'inactivo'
+        const linea = spot.calle_geom?.coordinates
+        const popup = (
+          <Popup closeOnClick={false}>
+            <PopupContent interactionRef={popupInteractRef}>
+              <SpotPopup
+                spot={spot}
+                canVote={canVote}
+                onReport={onReport}
+                onAbuse={onAbuse}
+                onReactivar={onReactivar}
+              />
+            </PopupContent>
+          </Popup>
+        )
+
+        // Con cuadra: pintamos la calle coloreada según la confianza.
+        if (linea?.length >= 2) {
+          return (
+            <Polyline
+              key={spot.id}
+              positions={toLatLngs(linea)}
+              pathOptions={{
+                color: caducado ? CADUCADO_COLOR : levelColor(level),
+                weight: 7,
+                opacity: caducado ? 0.45 : 0.85,
+              }}
+            >
+              {popup}
+            </Polyline>
+          )
+        }
+
+        // Respaldo: marcas viejas sin cuadra, siguen como pin.
+        const opacity = caducado ? 0.35 : levelOpacity(level)
         return (
-          <Marker
-            key={spot.id}
-            position={[spot.lat, spot.lng]}
-            icon={defaultIcon}
-            opacity={opacity}
-          >
+          <Marker key={spot.id} position={[spot.lat, spot.lng]} icon={defaultIcon} opacity={opacity}>
             {/* closeOnClick=false: que no se cierre al elegir franjas/confirmar.
                 Se cierra con la X o al abrir otro trapito (autoClose por defecto). */}
-            <Popup closeOnClick={false}>
-              <PopupContent interactionRef={popupInteractRef}>
-                <SpotPopup
-                  spot={spot}
-                  canVote={canVote}
-                  onReport={onReport}
-                  onAbuse={onAbuse}
-                  onReactivar={onReactivar}
-                />
-              </PopupContent>
-            </Popup>
+            {popup}
           </Marker>
         )
       })}

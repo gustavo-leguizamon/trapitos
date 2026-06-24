@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { toPointWKT, paddedRadius } from './geo'
+import { toPointWKT, toLineWKT, paddedRadius } from './geo'
 
 describe('toPointWKT', () => {
   it('arma el WKT con el orden (lng lat) que espera PostGIS', () => {
@@ -10,6 +10,16 @@ describe('toPointWKT', () => {
   it('no invierte las coordenadas', () => {
     const wkt = toPointWKT(10, 20)
     expect(wkt).toBe('SRID=4326;POINT(20 10)')
+  })
+})
+
+describe('toLineWKT', () => {
+  it('arma la LINESTRING con el orden (lng lat) que espera PostGIS', () => {
+    const wkt = toLineWKT([
+      [-58.25, -34.71],
+      [-58.24, -34.71],
+    ])
+    expect(wkt).toBe('SRID=4326;LINESTRING(-58.25 -34.71, -58.24 -34.71)')
   })
 })
 

@@ -343,7 +343,6 @@ export default function App() {
       {/* Hoja inferior para cargar */}
       {pendingLocation && (
         <AddSpotForm
-          location={pendingLocation}
           block={pendingBlock}
           blockLoading={blockLoading}
           onRetryBlock={() => detectarCuadra(pendingLocation)}

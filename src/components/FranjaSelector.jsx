@@ -23,7 +23,7 @@ export default function FranjaSelector({ value = [], onChange }) {
             onClick={() => toggle(f)}
           >
             {franjaLabel(f)}
-            {f === ahora ? ' · ahora' : ''}
+            {f === ahora ? <span className="franja-now">ahora</span> : ''}
           </button>
         )
       })}

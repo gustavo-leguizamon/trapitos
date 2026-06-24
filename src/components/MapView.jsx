@@ -151,7 +151,9 @@ export default function MapView({
             icon={defaultIcon}
             opacity={levelOpacity(level)}
           >
-            <Popup>
+            {/* closeOnClick=false: que no se cierre al elegir franjas/confirmar.
+                Se cierra con la X o al abrir otro trapito (autoClose por defecto). */}
+            <Popup closeOnClick={false}>
               <PopupContent interactionRef={popupInteractRef}>
                 <SpotPopup spot={spot} canVote={canVote} onReport={onReport} />
               </PopupContent>

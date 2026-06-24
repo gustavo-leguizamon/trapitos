@@ -44,9 +44,9 @@ y versionado [SemVer](https://semver.org/lang/es/).
   para poder testearla de forma aislada.
 
 ### Fixed
-- Al tocar "Confirmo" en el popup ya no se abre el formulario de alta: el handler de
-  click del mapa ignora los clicks originados dentro de un popup. El popup queda
-  abierto para elegir la franja.
+- Al tocar "Confirmo" en el popup ya no se abre el formulario de alta (el handler de
+  click del mapa ignora los clicks originados dentro de un popup) ni se cierra el
+  popup (`closeOnClick=false`), para poder elegir las franjas tranquilo.
 
 ## [0.1.0] — MVP
 

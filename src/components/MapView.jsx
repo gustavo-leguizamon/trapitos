@@ -26,25 +26,41 @@ const userIcon = L.divIcon({
   iconAnchor: [9, 9],
 })
 
-// Envuelve el contenido del popup y evita que los clicks (p. ej. en los botones)
-// se propaguen al mapa y disparen su handler de click (que abriría el alta).
-function PopupContent({ children }) {
+// Envuelve el contenido del popup. Marca una bandera de tiempo cuando el usuario
+// interactúa con el popup, para que el handler de click del mapa pueda ignorar
+// ese click (que si no abriría el formulario de alta).
+function PopupContent({ children, interactionRef }) {
   const ref = useRef(null)
   useEffect(() => {
-    if (ref.current) {
-      L.DomEvent.disableClickPropagation(ref.current)
-      L.DomEvent.disableScrollPropagation(ref.current)
+    const el = ref.current
+    if (!el) return
+    const mark = () => {
+      interactionRef.current = Date.now()
     }
-  }, [])
+    // Capturamos pointerdown/mousedown/touchstart (ocurren ANTES del click del mapa).
+    el.addEventListener('pointerdown', mark, true)
+    el.addEventListener('mousedown', mark, true)
+    el.addEventListener('touchstart', mark, true)
+    el.addEventListener('click', mark, true)
+    L.DomEvent.disableScrollPropagation(el)
+    return () => {
+      el.removeEventListener('pointerdown', mark, true)
+      el.removeEventListener('mousedown', mark, true)
+      el.removeEventListener('touchstart', mark, true)
+      el.removeEventListener('click', mark, true)
+    }
+  }, [interactionRef])
   return <div ref={ref}>{children}</div>
 }
 
 // Captura el toque/click en el mapa para sugerir una nueva marca.
-// Ignora los clicks originados dentro de un popup (p. ej. el botón "Confirmo"),
-// que no deben abrir el formulario de alta.
-function ClickHandler({ onMapClick }) {
+// Ignora el click si se originó dentro de un popup (botones "Confirmo", franjas, etc.).
+function ClickHandler({ onMapClick, interactionRef }) {
   useMapEvents({
     click(e) {
+      // 1) Si hubo interacción con un popup hace muy poco, este click viene de ahí.
+      if (Date.now() - (interactionRef.current || 0) < 700) return
+      // 2) Respaldo: si el target está dentro de un popup, ignorarlo.
       const target = e.originalEvent?.target
       if (target?.closest?.('.leaflet-popup')) return
       onMapClick({ lat: e.latlng.lat, lng: e.latlng.lng })
@@ -101,6 +117,8 @@ export default function MapView({
   onReport,
 }) {
   const center = userPosition || { lat: -34.6037, lng: -58.3816 } // CABA por defecto
+  // Momento de la última interacción con un popup (para no abrir el alta por error).
+  const popupInteractRef = useRef(0)
 
   return (
     <MapContainer
@@ -114,7 +132,7 @@ export default function MapView({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      <ClickHandler onMapClick={onMapClick} />
+      <ClickHandler onMapClick={onMapClick} interactionRef={popupInteractRef} />
       <Recenter center={userPosition} trigger={recenterTrigger} />
       <ViewportLoader onViewChange={onViewChange} />
 
@@ -134,7 +152,7 @@ export default function MapView({
             opacity={levelOpacity(level)}
           >
             <Popup>
-              <PopupContent>
+              <PopupContent interactionRef={popupInteractRef}>
                 <SpotPopup spot={spot} canVote={canVote} onReport={onReport} />
               </PopupContent>
             </Popup>

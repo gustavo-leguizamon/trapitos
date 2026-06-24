@@ -47,8 +47,42 @@ create index if not exists spot_reports_spot_idx
   on public.spot_reports (spot_id);
 
 -- -------------------------------------------------------------
+-- Vista: agregados de reputación por usuario (Fase 8)
+-- Base única para la reputación propia (mi_reputacion) y la del autor de cada
+-- marca (spots_cercanos). En PG15 la vista corre con permisos del dueño, así que
+-- ve todas las filas sin chocar con RLS. No cuenta autovotos.
+-- -------------------------------------------------------------
+create or replace view public.user_reputation as
+with creados as (
+  select
+    s.created_by as user_id,
+    count(distinct s.id)                                                            as spots_creados,
+    count(*) filter (where r.tipo = 'confirma'  and r.user_id <> s.created_by)      as confirmaciones_recibidas,
+    count(*) filter (where r.tipo = 'desmiente' and r.user_id <> s.created_by)      as desmentidos_recibidos
+  from public.trapito_spots s
+  left join public.spot_reports r on r.spot_id = s.id
+  where s.created_by is not null
+  group by s.created_by
+),
+emitidos as (
+  select user_id, count(*) as votos_emitidos
+  from public.spot_reports
+  group by user_id
+)
+select
+  coalesce(c.user_id, e.user_id)            as user_id,
+  coalesce(c.spots_creados, 0)              as spots_creados,
+  coalesce(c.confirmaciones_recibidas, 0)   as confirmaciones_recibidas,
+  coalesce(c.desmentidos_recibidos, 0)      as desmentidos_recibidos,
+  coalesce(e.votos_emitidos, 0)             as votos_emitidos
+from creados c
+full outer join emitidos e on e.user_id = c.user_id;
+
+grant select on public.user_reputation to anon, authenticated;
+
+-- -------------------------------------------------------------
 -- RPC: traer trapitos dentro de un radio (en metros) de un punto,
--- junto con el conteo de votos (confirmaciones / desmentidos).
+-- junto con el conteo de votos y la reputación del autor de cada marca.
 -- Se llama desde el frontend con supabase.rpc('spots_cercanos', {...})
 -- -------------------------------------------------------------
 -- Se dropea primero porque cambia el tipo de retorno respecto a la Fase 1.
@@ -70,7 +104,8 @@ returns table (
   confirma_count  bigint,
   desmiente_count bigint,
   last_activity   timestamptz,
-  horarios        jsonb
+  horarios        jsonb,
+  autor           jsonb
 )
 language sql
 stable
@@ -87,16 +122,24 @@ as $$
       'manana',    nullif(count(*) filter (where r.tipo = 'confirma' and 'manana' = any(r.franjas)), 0),
       'tarde',     nullif(count(*) filter (where r.tipo = 'confirma' and 'tarde' = any(r.franjas)), 0),
       'noche',     nullif(count(*) filter (where r.tipo = 'confirma' and 'noche' = any(r.franjas)), 0)
-    )) as horarios
+    )) as horarios,
+    -- agregados de reputación del autor (el front calcula puntaje y nivel)
+    case when s.created_by is null then null else jsonb_build_object(
+      'spotsCreados',            coalesce(ur.spots_creados, 0),
+      'confirmacionesRecibidas', coalesce(ur.confirmaciones_recibidas, 0),
+      'desmentidosRecibidos',    coalesce(ur.desmentidos_recibidos, 0),
+      'votosEmitidos',           coalesce(ur.votos_emitidos, 0)
+    ) end as autor
   from public.trapito_spots s
   left join public.spot_reports r on r.spot_id = s.id
+  left join public.user_reputation ur on ur.user_id = s.created_by
   where s.status = 'activo'
     and st_dwithin(
       s.geom,
       st_setsrid(st_makepoint(p_lng, p_lat), 4326)::geography,
       p_radio_m
     )
-  group by s.id
+  group by s.id, ur.spots_creados, ur.confirmaciones_recibidas, ur.desmentidos_recibidos, ur.votos_emitidos
   order by s.geom <-> st_setsrid(st_makepoint(p_lng, p_lat), 4326)::geography
   limit 500;
 $$;
@@ -205,11 +248,9 @@ create policy "el votante borra su voto"
   using (auth.uid() = user_id);
 
 -- -------------------------------------------------------------
--- Reputación del usuario (Fase 4)
--- Agregados del usuario logueado para calcular su reputación en el front.
--- security definer: necesita contar también las marcas inactivas/propias,
--- pero SIEMPRE acotado a auth.uid(), así que no expone datos de terceros.
--- No cuenta los autovotos (confirmar/desmentir las propias marcas).
+-- Reputación del usuario (Fase 4, refactor Fase 8)
+-- Agregados del usuario logueado, leídos de la vista user_reputation
+-- (misma fórmula que para la reputación del autor de cada marca).
 -- -------------------------------------------------------------
 create or replace function public.mi_reputacion()
 returns table (
@@ -224,20 +265,12 @@ set search_path = public
 stable
 as $$
   select
-    (select count(*) from public.trapito_spots s
-       where s.created_by = auth.uid()),
-    (select count(*) from public.spot_reports r
-       join public.trapito_spots s on s.id = r.spot_id
-       where s.created_by = auth.uid()
-         and r.tipo = 'confirma'
-         and r.user_id <> s.created_by),
-    (select count(*) from public.spot_reports r
-       join public.trapito_spots s on s.id = r.spot_id
-       where s.created_by = auth.uid()
-         and r.tipo = 'desmiente'
-         and r.user_id <> s.created_by),
-    (select count(*) from public.spot_reports r
-       where r.user_id = auth.uid());
+    coalesce(ur.spots_creados, 0),
+    coalesce(ur.confirmaciones_recibidas, 0),
+    coalesce(ur.desmentidos_recibidos, 0),
+    coalesce(ur.votos_emitidos, 0)
+  from (select auth.uid() as uid) me
+  left join public.user_reputation ur on ur.user_id = me.uid;
 $$;
 
 grant execute on function public.mi_reputacion() to authenticated;

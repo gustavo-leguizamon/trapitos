@@ -10,6 +10,9 @@ y versionado [SemVer](https://semver.org/lang/es/).
 ## [Sin publicar]
 
 ### Added
+- **Fase 8 — Reputación del autor en cada marca:** el popup muestra el nivel de
+  quien cargó el trapito. Nueva vista `user_reputation` (fuente única); `spots_cercanos`
+  devuelve `autor` y `mi_reputacion` se refactorizó para leer de la vista.
 - **Fase 7 — Notificaciones por proximidad:** botón 🔔 que avisa (con la app abierta)
   cuando te acercás a un trapito (`src/lib/proximity.js`,
   `src/hooks/useProximityNotifications.js`); usa histéresis para no repetir avisos.

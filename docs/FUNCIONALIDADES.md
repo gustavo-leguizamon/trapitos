@@ -30,7 +30,10 @@
 
 ### Marcar un trapito
 1. El usuario toca el mapa (o el botón ＋, que usa su GPS).
-2. Se abre una hoja inferior (`AddSpotForm`) con calle y detalle opcional.
+2. Se abre una hoja inferior (`AddSpotForm`) sobre un fondo atenuado, con tirador y
+   cierre por `Escape`/tocando afuera. Tiene calle y detalle (ambos opcionales) y el
+   selector de franjas. Muestra la cuadra detectada, pero **no** la latitud/longitud
+   crudas (no le aportan nada al usuario).
 3. Al guardar, se inserta en `trapito_spots` con el punto en formato WKT
    (`toPointWKT` en `src/lib/geo.js`) y el `created_by` del usuario logueado.
 4. Se recargan los trapitos del área visible.
@@ -85,8 +88,9 @@
   siguen mostrándose como pin (respaldo).
 - Robustez: prueba **varios servidores Overpass** con timeout, **amplía el radio**
   si no encuentra calles, y permite **reintentar** desde el formulario. El alta
-  **espera a que termine la detección** antes de guardar (botón deshabilitado con
-  "Detectando cuadra…"), para no guardar solo el punto por error.
+  **espera a que termine la detección** antes de guardar (se puede tocar "Guardar"
+  mientras detecta y el guardado aguarda al resultado), para no guardar solo el punto
+  por error.
 - Persistencia: columna `geom_calle geography(LineString,4326)`; `spots_cercanos`
   devuelve `calle_geom` como GeoJSON. Migración `supabase/migrations/phase11_cuadra.sql`.
 
@@ -127,7 +131,7 @@
 ### Horarios del trapito (Fase 5–6)
 - Tanto al **dar de alta** un trapito como al hacer **Confirmo**, se pueden **elegir
   varias franjas horarias** (`FranjaSelector`). La franja de la hora actual viene
-  marcada como "· ahora" (sugerida). Si no se elige ninguna, se usa la actual.
+  marcada con una insignia "ahora" (sugerida). Si no se elige ninguna, se usa la actual.
 - Las franjas se guardan como arreglo en `spot_reports.franjas`. Al dar de alta, las
   franjas quedan como una confirmación del creador (no suma reputación).
 - Franjas (`src/lib/schedule.js`): 🌙 Madrugada (0–5) · 🌅 Mañana (6–11) ·

@@ -9,6 +9,8 @@ y versionado [SemVer](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+## [0.2.0] — 2026-06-24
+
 ### Added
 - **Fase 11 — Pintar la cuadra del trapito:** al marcar se detecta la cuadra
   (tramo de calle entre esquinas) desde OpenStreetMap/Overpass y se recorta con

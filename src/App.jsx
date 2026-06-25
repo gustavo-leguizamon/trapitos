@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { useGeolocation } from './hooks/useGeolocation'
 import { useProximityNotifications } from './hooks/useProximityNotifications'
+import { usePwaInstall } from './hooks/usePwaInstall'
 import { toPointWKT, toLineWKT, paddedRadius } from './lib/geo'
 import { getBlockForPoint } from './lib/street'
 import { franjaFromDate } from './lib/schedule'
@@ -32,6 +33,9 @@ export default function App() {
 
   // Notificaciones de proximidad a trapitos cercanos
   useProximityNotifications(position, spots, notifEnabled)
+
+  // Instalación de la PWA
+  const { canInstall, promptInstall } = usePwaInstall()
 
   // --- Detectar la cuadra (OSM) de la ubicación pendiente ---
   // Al elegir un punto, consultamos OpenStreetMap el tramo de calle por el que
@@ -284,6 +288,11 @@ export default function App() {
       <header className="topbar">
         <span className="brand">🅿️ Trapitos</span>
         <div className="topbar-right">
+          {canInstall && (
+            <button className="install-btn" onClick={promptInstall} title="Instalar la app">
+              📲 Instalar
+            </button>
+          )}
           <button
             className="icon-btn"
             onClick={toggleVerCaducados}

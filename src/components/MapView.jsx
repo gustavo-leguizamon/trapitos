@@ -1,6 +1,8 @@
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Polyline, Popup, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import SpotPopup from './SpotPopup'
+import { confidenceLevel, levelOpacity, levelColor } from '../lib/confidence'
 
 // Arregla los íconos por defecto de Leaflet (que se rompen con bundlers como Vite)
 import iconUrl from 'leaflet/dist/images/marker-icon.png'
@@ -24,10 +26,51 @@ const userIcon = L.divIcon({
   iconAnchor: [9, 9],
 })
 
-// Captura el toque/click en el mapa para sugerir una nueva marca
-function ClickHandler({ onMapClick }) {
+// Color gris para las cuadras de trapitos caducados.
+const CADUCADO_COLOR = '#9e9e9e'
+
+// Convierte coords GeoJSON [[lng,lat], ...] al orden [[lat,lng], ...] de Leaflet.
+function toLatLngs(coords) {
+  return coords.map(([lng, lat]) => [lat, lng])
+}
+
+// Envuelve el contenido del popup. Marca una bandera de tiempo cuando el usuario
+// interactúa con el popup, para que el handler de click del mapa pueda ignorar
+// ese click (que si no abriría el formulario de alta).
+function PopupContent({ children, interactionRef }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const mark = () => {
+      interactionRef.current = Date.now()
+    }
+    // Capturamos pointerdown/mousedown/touchstart (ocurren ANTES del click del mapa).
+    el.addEventListener('pointerdown', mark, true)
+    el.addEventListener('mousedown', mark, true)
+    el.addEventListener('touchstart', mark, true)
+    el.addEventListener('click', mark, true)
+    L.DomEvent.disableScrollPropagation(el)
+    return () => {
+      el.removeEventListener('pointerdown', mark, true)
+      el.removeEventListener('mousedown', mark, true)
+      el.removeEventListener('touchstart', mark, true)
+      el.removeEventListener('click', mark, true)
+    }
+  }, [interactionRef])
+  return <div ref={ref}>{children}</div>
+}
+
+// Captura el toque/click en el mapa para sugerir una nueva marca.
+// Ignora el click si se originó dentro de un popup (botones "Confirmo", franjas, etc.).
+function ClickHandler({ onMapClick, interactionRef }) {
   useMapEvents({
     click(e) {
+      // 1) Si hubo interacción con un popup hace muy poco, este click viene de ahí.
+      if (Date.now() - (interactionRef.current || 0) < 700) return
+      // 2) Respaldo: si el target está dentro de un popup, ignorarlo.
+      const target = e.originalEvent?.target
+      if (target?.closest?.('.leaflet-popup')) return
       onMapClick({ lat: e.latlng.lat, lng: e.latlng.lng })
     },
   })
@@ -72,8 +115,21 @@ function ViewportLoader({ onViewChange }) {
   return null
 }
 
-export default function MapView({ userPosition, spots, onMapClick, recenterTrigger, onViewChange }) {
+export default function MapView({
+  userPosition,
+  spots,
+  pendingBlock,
+  onMapClick,
+  recenterTrigger,
+  onViewChange,
+  canVote,
+  onReport,
+  onAbuse,
+  onReactivar,
+}) {
   const center = userPosition || { lat: -34.6037, lng: -58.3816 } // CABA por defecto
+  // Momento de la última interacción con un popup (para no abrir el alta por error).
+  const popupInteractRef = useRef(0)
 
   return (
     <MapContainer
@@ -87,7 +143,7 @@ export default function MapView({ userPosition, spots, onMapClick, recenterTrigg
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      <ClickHandler onMapClick={onMapClick} />
+      <ClickHandler onMapClick={onMapClick} interactionRef={popupInteractRef} />
       <Recenter center={userPosition} trigger={recenterTrigger} />
       <ViewportLoader onViewChange={onViewChange} />
 
@@ -97,14 +153,59 @@ export default function MapView({ userPosition, spots, onMapClick, recenterTrigg
         </Marker>
       )}
 
-      {spots.map((spot) => (
-        <Marker key={spot.id} position={[spot.lat, spot.lng]} icon={defaultIcon}>
-          <Popup>
-            <strong>{spot.calle || 'Trapito'}</strong>
-            {spot.descripcion && <p style={{ margin: '4px 0 0' }}>{spot.descripcion}</p>}
+      {/* Vista previa de la cuadra detectada al marcar un trapito nuevo */}
+      {pendingBlock?.coords?.length >= 2 && (
+        <Polyline
+          positions={toLatLngs(pendingBlock.coords)}
+          pathOptions={{ color: '#1565c0', weight: 7, opacity: 0.7, dashArray: '6 8' }}
+        />
+      )}
+
+      {spots.map((spot) => {
+        const level = confidenceLevel(spot.confirma_count, spot.desmiente_count)
+        const caducado = spot.status === 'inactivo'
+        const linea = spot.calle_geom?.coordinates
+        const popup = (
+          <Popup closeOnClick={false}>
+            <PopupContent interactionRef={popupInteractRef}>
+              <SpotPopup
+                spot={spot}
+                canVote={canVote}
+                onReport={onReport}
+                onAbuse={onAbuse}
+                onReactivar={onReactivar}
+              />
+            </PopupContent>
           </Popup>
-        </Marker>
-      ))}
+        )
+
+        // Con cuadra: pintamos la calle coloreada según la confianza.
+        if (linea?.length >= 2) {
+          return (
+            <Polyline
+              key={spot.id}
+              positions={toLatLngs(linea)}
+              pathOptions={{
+                color: caducado ? CADUCADO_COLOR : levelColor(level),
+                weight: 7,
+                opacity: caducado ? 0.45 : 0.85,
+              }}
+            >
+              {popup}
+            </Polyline>
+          )
+        }
+
+        // Respaldo: marcas viejas sin cuadra, siguen como pin.
+        const opacity = caducado ? 0.35 : levelOpacity(level)
+        return (
+          <Marker key={spot.id} position={[spot.lat, spot.lng]} icon={defaultIcon} opacity={opacity}>
+            {/* closeOnClick=false: que no se cierre al elegir franjas/confirmar.
+                Se cierra con la X o al abrir otro trapito (autoClose por defecto). */}
+            {popup}
+          </Marker>
+        )
+      })}
     </MapContainer>
   )
 }

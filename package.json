@@ -1,7 +1,7 @@
 {
   "name": "trapitos",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Mapa colaborativo para marcar ubicaciones de trapitos (cuidacoches) en la vía pública",
   "scripts": {
@@ -15,6 +15,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
+    "@turf/helpers": "^7.3.5",
+    "@turf/line-slice": "^7.3.5",
+    "@turf/nearest-point-on-line": "^7.3.5",
     "leaflet": "^1.9.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

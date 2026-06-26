@@ -14,6 +14,12 @@ y versionado [SemVer](https://semver.org/lang/es/).
   trapito en la ubicación GPS. Ahora los trapitos se agregan únicamente tocando
   el mapa; el botón 🎯 (centrar en mi ubicación) se mantiene.
 
+### Fixed
+- **Trapitos al recentrar en mi ubicación:** al tocar 🎯 con la posición lejana, el
+  mapa se recentraba pero los trapitos cercanos no aparecían hasta mover el mapa a
+  mano. Ahora `Recenter` recarga el área de forma explícita tras recentrar, sin
+  depender del evento `moveend` (que se perdía durante el re-render).
+
 ## [0.3.0] — 2026-06-26
 
 ### Added

@@ -9,6 +9,8 @@ y versionado [SemVer](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+## [0.4.0] — 2026-06-26
+
 ### Changed
 - **Marcar solo tocando el mapa:** se quitó el botón flotante ＋ que marcaba el
   trapito en la ubicación GPS. Ahora los trapitos se agregan únicamente tocando

@@ -13,6 +13,9 @@ y versionado [SemVer](https://semver.org/lang/es/).
 - **Marcar solo tocando el mapa:** se quitó el botón flotante ＋ que marcaba el
   trapito en la ubicación GPS. Ahora los trapitos se agregan únicamente tocando
   el mapa; el botón 🎯 (centrar en mi ubicación) se mantiene.
+- **Aviso de notificaciones temporal:** el toast "Te avisaremos cuando estés cerca
+  de un trapito" ahora se oculta solo a los 4 segundos al activar las
+  notificaciones, y desaparece al instante al apagar la campana.
 
 ## [0.3.0] — 2026-06-26
 

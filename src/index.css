@@ -77,6 +77,19 @@ body,
   background: var(--accent);
 }
 
+.install-btn {
+  pointer-events: auto;
+  border: none;
+  background: var(--accent);
+  color: #1f2937;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .login-btn {
   background: var(--accent);
   color: #1f2937;

@@ -332,21 +332,11 @@ export default function App() {
         >
           🎯
         </button>
-        <button
-          className="fab primary"
-          title="Marcar trapito en mi ubicación"
-          onClick={() => {
-            if (position) setPendingLocation(position)
-            else setMessage('Esperando tu ubicación GPS…')
-          }}
-        >
-          ＋
-        </button>
       </div>
 
       {/* Ayuda contextual */}
       {!pendingLocation && (
-        <div className="hint">Tocá el mapa o usá ＋ para marcar un trapito</div>
+        <div className="hint">Tocá el mapa para marcar un trapito</div>
       )}
 
       {/* Hoja inferior para cargar */}

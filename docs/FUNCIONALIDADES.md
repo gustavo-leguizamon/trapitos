@@ -11,7 +11,7 @@
 | 1 | Ver mapa | Mapa Leaflet/OpenStreetMap a pantalla completa | ✅ | — (integración manual) |
 | 2 | Geolocalización | Detecta la ubicación del usuario por GPS y la muestra como punto azul | ✅ | `src/hooks/useGeolocation.test.js` |
 | 3 | Cargar trapitos visibles | Trae del backend los trapitos dentro del área visible del mapa (al mover/zoomear) | ✅ | `src/lib/geo.test.js` (radio) |
-| 4 | Marcar un trapito | Tocando el mapa o con el botón ＋ (posición GPS); se completa calle + detalle | ✅ | `src/components/AddSpotForm.test.jsx` |
+| 4 | Marcar un trapito | Tocando el mapa; se completa calle + detalle | ✅ | `src/components/AddSpotForm.test.jsx` |
 | 5 | Login anónimo | Participar sin crear cuenta (Supabase Anonymous Auth) | ✅ | — (integración manual) |
 | 6 | Seguridad (RLS) | Cualquiera lee; solo autenticados crean; cada uno edita lo suyo | ✅ | — (definido en `supabase/schema.sql`) |
 | 7 | Votos de la comunidad | Botones "Confirmo" / "Ya no está" en cada trapito (un voto por usuario, modificable) | ✅ | `src/components/SpotPopup.test.jsx` |
@@ -30,7 +30,7 @@
 ## Detalle del flujo
 
 ### Marcar un trapito
-1. El usuario toca el mapa (o el botón ＋, que usa su GPS).
+1. El usuario toca el mapa en el lugar del trapito.
 2. Se abre una hoja inferior (`AddSpotForm`) sobre un fondo atenuado, con tirador y
    cierre por `Escape`/tocando afuera. Tiene calle y detalle (ambos opcionales) y el
    selector de franjas. Muestra la cuadra detectada, pero **no** la latitud/longitud
@@ -78,7 +78,7 @@
   del reactivador (refresca la actividad para que no recaduque enseguida).
 
 ### Pintar la cuadra del trapito (Fase 11)
-- Al marcar un trapito (tocando el mapa o con ＋), se consulta **OpenStreetMap**
+- Al marcar un trapito (tocando el mapa), se consulta **OpenStreetMap**
   vía **Overpass** las calles cercanas y se recorta el **tramo entre las dos
   esquinas** más cercanas al punto = la cuadra (`getBlockForPoint` en
   `src/lib/street.js`, con Turf para la geometría). El nombre de la calle se

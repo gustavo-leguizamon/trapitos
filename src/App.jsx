@@ -30,9 +30,14 @@ export default function App() {
   const lastViewRef = useRef(null)
   // Espejo en ref para que loadSpots (estable) lea el valor actual sin recrearse
   const verCaducadosRef = useRef(false)
+  // Timeout para ocultar el aviso de notificaciones activadas
+  const notifMsgTimeoutRef = useRef(null)
 
   // Notificaciones de proximidad a trapitos cercanos
   useProximityNotifications(position, spots, notifEnabled)
+
+  // Limpiar el timeout del aviso de notificaciones al desmontar
+  useEffect(() => () => clearTimeout(notifMsgTimeoutRef.current), [])
 
   // Instalación de la PWA
   const { canInstall, promptInstall } = usePwaInstall()
@@ -107,6 +112,9 @@ export default function App() {
     if (notifEnabled) {
       setNotifEnabled(false)
       localStorage.removeItem('notifProximidad')
+      // Al apagar la campana, ocultar el aviso
+      clearTimeout(notifMsgTimeoutRef.current)
+      setMessage(null)
       return
     }
     if (typeof Notification === 'undefined') {
@@ -122,6 +130,9 @@ export default function App() {
     setNotifEnabled(true)
     localStorage.setItem('notifProximidad', '1')
     setMessage('Te avisaremos cuando estés cerca de un trapito 🔔')
+    // Ocultar el aviso automáticamente luego de unos segundos
+    clearTimeout(notifMsgTimeoutRef.current)
+    notifMsgTimeoutRef.current = setTimeout(() => setMessage(null), 4000)
   }
 
   // Mostrar u ocultar los trapitos caducados en el mapa
@@ -332,21 +343,11 @@ export default function App() {
         >
           🎯
         </button>
-        <button
-          className="fab primary"
-          title="Marcar trapito en mi ubicación"
-          onClick={() => {
-            if (position) setPendingLocation(position)
-            else setMessage('Esperando tu ubicación GPS…')
-          }}
-        >
-          ＋
-        </button>
       </div>
 
       {/* Ayuda contextual */}
       {!pendingLocation && (
-        <div className="hint">Tocá el mapa o usá ＋ para marcar un trapito</div>
+        <div className="hint">Tocá el mapa para marcar un trapito</div>
       )}
 
       {/* Hoja inferior para cargar */}

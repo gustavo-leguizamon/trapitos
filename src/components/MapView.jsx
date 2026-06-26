@@ -77,13 +77,44 @@ function ClickHandler({ onMapClick, interactionRef }) {
   return null
 }
 
-// Recentra el mapa cuando cambia la ubicación del usuario (solo la primera vez)
-function Recenter({ center, trigger }) {
+// Calcula el área visible del mapa (centro + radio en metros).
+function viewFromMap(map) {
+  const center = map.getCenter()
+  const radius = map.distance(center, map.getBounds().getNorthEast())
+  return { lat: center.lat, lng: center.lng, radius }
+}
+
+// Recentra el mapa en la ubicación del usuario al tocar el botón 🎯 y, además,
+// automáticamente la primera vez que se obtiene la ubicación.
+function Recenter({ center, trigger, onViewChange }) {
   const map = useMap()
+  const didInitialCenter = useRef(false)
+
+  function recenter() {
+    // animate:false → el reposicionamiento es síncrono, así getBounds() ya
+    // refleja la nueva área al recargar los trapitos.
+    map.setView([center.lat, center.lng], map.getZoom(), { animate: false })
+    // Recargamos explícitamente: no dependemos del evento moveend, que durante
+    // el re-render puede dispararse mientras ViewportLoader tiene su handler
+    // momentáneamente desconectado (y así perderse).
+    onViewChange(viewFromMap(map))
+  }
+
+  // Centrado automático apenas llega la ubicación (una sola vez).
   useEffect(() => {
-    if (center) map.setView([center.lat, center.lng], map.getZoom())
+    if (center && !didInitialCenter.current) {
+      didInitialCenter.current = true
+      recenter()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [center])
+
+  // Centrado manual: cada vez que el usuario toca el botón 🎯.
+  useEffect(() => {
+    if (trigger > 0 && center) recenter()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trigger])
+
   return null
 }
 
@@ -93,9 +124,7 @@ function ViewportLoader({ onViewChange }) {
   const map = useMap()
 
   function fire() {
-    const center = map.getCenter()
-    const radius = map.distance(center, map.getBounds().getNorthEast())
-    onViewChange({ lat: center.lat, lng: center.lng, radius })
+    onViewChange(viewFromMap(map))
   }
 
   useMapEvents({
@@ -144,7 +173,7 @@ export default function MapView({
       />
 
       <ClickHandler onMapClick={onMapClick} interactionRef={popupInteractRef} />
-      <Recenter center={userPosition} trigger={recenterTrigger} />
+      <Recenter center={userPosition} trigger={recenterTrigger} onViewChange={onViewChange} />
       <ViewportLoader onViewChange={onViewChange} />
 
       {userPosition && (

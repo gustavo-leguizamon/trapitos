@@ -24,6 +24,7 @@
 | 14 | Reputación del autor en la marca | El popup muestra el nivel de reputación de quien cargó el trapito | ✅ | `src/components/SpotPopup.test.jsx` |
 | 15 | Moderación / reportes de abuso | "⚠️ Reportar" con motivo; al llegar a 3 reportes distintos el trapito se oculta | ✅ | `src/lib/abuse.test.js`, `src/components/SpotPopup.test.jsx` |
 | 16 | Reactivar caducados | Toggle ♻️ para ver los caducados y reactivarlos (no los ocultos por abuso) | ✅ | `src/components/SpotPopup.test.jsx` |
+| 17 | Instalación PWA | Íconos + manifiesto para instalar en el celular; botón "📲 Instalar" | ✅ | — (verificación manual) |
 | 17 | Pintar la cuadra | Detecta la cuadra (OSM/Overpass) y la pinta como línea coloreada por confianza, en vez de un solo punto | ✅ | `src/lib/street.test.js`, `src/lib/geo.test.js`, `src/lib/confidence.test.js` |
 
 ## Detalle del flujo

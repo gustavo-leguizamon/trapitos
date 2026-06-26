@@ -71,6 +71,14 @@ alguno falla) y recuerda actualizar la documentación. Ver [`CONTRIBUTING.md`](C
 - **Comunidad:** reputación de usuarios, horarios del trapito, fotos, notificaciones por proximidad.
 - **Moderación:** reportes de abuso y panel de administración.
 
-## Notas
+## PWA / instalación
 
-- Los íconos PWA (`public/icon-192.png`, `public/icon-512.png`) no están incluidos; agregalos para que la instalación muestre el ícono correcto.
+La app es instalable (manifiesto + service worker). Los íconos viven en `public/`
+y se generan con:
+
+```bash
+npm run icons   # regenera los PNG desde scripts/generate-icons.mjs (usa sharp)
+```
+
+La instalación requiere **HTTPS** (en producción lo da Vercel). En Android/desktop
+aparece el botón **"📲 Instalar"**; en iOS se usa **Compartir → Agregar a inicio**.

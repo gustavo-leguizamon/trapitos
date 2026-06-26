@@ -9,6 +9,14 @@ y versionado [SemVer](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+## [0.3.0] — 2026-06-26
+
+### Added
+- **PWA instalable:** íconos reales (192/512 + *maskable* para Android + apple-touch
+  para iOS), manifiesto completo (id, scope, lang, orientación, categorías) y
+  metadatos iOS. Botón **"📲 Instalar"** en la barra que dispara el prompt de
+  instalación (`src/hooks/usePwaInstall.js`).
+
 ## [0.2.0] — 2026-06-24
 
 ### Added

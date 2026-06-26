@@ -1,7 +1,7 @@
 {
   "name": "trapitos",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Mapa colaborativo para marcar ubicaciones de trapitos (cuidacoches) en la vía pública",
   "scripts": {
@@ -11,6 +11,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:ui": "vitest --ui",
+    "icons": "node scripts/generate-icons.mjs",
     "prepare": "husky"
   },
   "dependencies": {
@@ -30,6 +31,7 @@
     "@vitejs/plugin-react": "^4.3.1",
     "husky": "^9.1.4",
     "jsdom": "^24.1.1",
+    "sharp": "^0.35.2",
     "vite": "^5.4.0",
     "vite-plugin-pwa": "^0.20.1",
     "vitest": "^2.0.5"

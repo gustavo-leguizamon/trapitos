@@ -9,6 +9,16 @@ y versionado [SemVer](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+### Fixed
+- **Mapa en blanco al centrar en la ubicación:** en el celular (PWA en modo
+  standalone) el contenedor del mapa termina de dimensionarse después del
+  montaje; al auto-centrar o tocar 🎯, `setView` usaba un tamaño cacheado de 0 y
+  Leaflet no cargaba los tiles del nuevo centro. Ahora `recenter()` llama a
+  `map.invalidateSize()` antes de centrar.
+- **Pantalla en blanco ante errores de render:** se agregó un `ErrorBoundary` que
+  muestra el error en pantalla (útil en el celular, sin consola) en lugar de
+  dejar la app en blanco.
+
 ## [0.4.0] — 2026-06-26
 
 ### Changed

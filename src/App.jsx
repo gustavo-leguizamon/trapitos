@@ -297,7 +297,6 @@ export default function App() {
 
       {/* Barra superior */}
       <header className="topbar">
-        <span className="brand">🅿️ Trapitos</span>
         <div className="topbar-right">
           {canInstall && (
             <button className="install-btn" onClick={promptInstall} title="Instalar la app">

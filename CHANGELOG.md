@@ -9,6 +9,8 @@ y versionado [SemVer](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+## [0.4.2] — 2026-06-27
+
 ### Fixed
 - **Pantalla en blanco en el celular al detectar la ubicación / tocar 🎯:** con las
   notificaciones de proximidad activadas, al acercarse a un trapito la app llamaba

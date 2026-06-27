@@ -95,6 +95,102 @@ body,
   cursor: pointer;
 }
 
+/* Menú de identidad (Participar / Guardar cuenta / login por email) */
+.auth-menu {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.save-account-btn,
+.have-account-link {
+  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.have-account-link {
+  background: transparent;
+  font-weight: 500;
+  text-decoration: underline;
+  opacity: 0.9;
+}
+
+.auth-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1100;
+  width: 240px;
+  background: white;
+  color: #1f2937;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-panel-title {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #374151;
+}
+
+.auth-panel .google-btn {
+  background: #fff;
+  color: #1f2937;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-sep {
+  text-align: center;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.auth-panel form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auth-panel input {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 14px;
+}
+
+.auth-panel form button {
+  background: var(--accent);
+  color: #1f2937;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-panel button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .badge {
   background: rgba(255, 255, 255, 0.2);
   padding: 6px 12px;

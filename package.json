@@ -1,7 +1,7 @@
 {
   "name": "trapitos",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.4.1",
   "type": "module",
   "description": "Mapa colaborativo para marcar ubicaciones de trapitos (cuidacoches) en la vía pública",
   "scripts": {

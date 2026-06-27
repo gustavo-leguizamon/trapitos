@@ -9,6 +9,8 @@ y versionado [SemVer](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+## [0.4.1] — 2026-06-27
+
 ### Fixed
 - **Mapa en blanco al centrar en la ubicación:** en el celular (PWA en modo
   standalone) el contenedor del mapa termina de dimensionarse después del

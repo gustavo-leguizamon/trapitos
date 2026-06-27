@@ -9,6 +9,15 @@ y versionado [SemVer](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+### Fixed
+- **Pantalla en blanco en el celular al detectar la ubicación / tocar 🎯:** con las
+  notificaciones de proximidad activadas, al acercarse a un trapito la app llamaba
+  a `new Notification(...)`, que en Android está prohibido y lanza
+  *"Illegal constructor"*, tirando toda la app. Ahora la notificación se muestra
+  vía `ServiceWorkerRegistration.showNotification()` (con respaldo al constructor en
+  escritorio) y todo el envío va envuelto en `try/catch` para que una notificación
+  nunca pueda romper la app.
+
 ## [0.4.1] — 2026-06-27
 
 ### Fixed

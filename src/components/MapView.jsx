@@ -91,6 +91,11 @@ function Recenter({ center, trigger, onViewChange }) {
   const didInitialCenter = useRef(false)
 
   function recenter() {
+    // En el celular (sobre todo PWA standalone) el contenedor del mapa termina
+    // de dimensionarse después del montaje. Si centramos con un tamaño cacheado
+    // de 0, Leaflet no pide los tiles del nuevo centro y el mapa queda en blanco.
+    // invalidateSize() refresca el tamaño real antes de mover.
+    map.invalidateSize()
     // animate:false → el reposicionamiento es síncrono, así getBounds() ya
     // refleja la nueva área al recargar los trapitos.
     map.setView([center.lat, center.lng], map.getZoom(), { animate: false })

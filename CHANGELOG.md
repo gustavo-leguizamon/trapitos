@@ -9,6 +9,13 @@ y versionado [SemVer](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+### Added
+- **Guardar la cuenta anónima (Google / email):** quien participa de forma anónima
+  ahora puede vincular su sesión a Google o a un email (magic link) desde el botón
+  "💾 Guardar", conservando su reputación, marcas y votos (mismo usuario). Quien ya
+  tiene cuenta puede volver a entrar desde otro dispositivo con "Ya tengo cuenta".
+  Requiere habilitar el provider de Google y *Manual Linking* en Supabase.
+
 ## [0.4.2] — 2026-06-27
 
 ### Fixed

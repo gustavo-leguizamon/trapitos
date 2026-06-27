@@ -8,7 +8,7 @@ import { getBlockForPoint } from './lib/street'
 import { franjaFromDate } from './lib/schedule'
 import MapView from './components/MapView'
 import AddSpotForm from './components/AddSpotForm'
-import ReputationBadge from './components/ReputationBadge'
+import AuthMenu from './components/AuthMenu'
 
 export default function App() {
   const { position, error: geoError, loading: geoLoading } = useGeolocation()
@@ -105,6 +105,44 @@ export default function App() {
   async function signInAnonymously() {
     const { error } = await supabase.auth.signInAnonymously()
     if (error) setMessage('No se pudo iniciar sesión: ' + error.message)
+  }
+
+  // Vincular la sesión anónima a Google conservando el MISMO usuario: la
+  // reputación, los spots y los votos no se pierden (todo cuelga de auth.uid()).
+  // Redirige a Google y vuelve a la app gracias a detectSessionInUrl.
+  async function linkGoogle() {
+    const { error } = await supabase.auth.linkIdentity({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    })
+    if (error) setMessage('No se pudo vincular Google: ' + error.message)
+  }
+
+  // Guardar la cuenta anónima con un email: dispara un correo de confirmación.
+  // Al confirmarlo, el usuario pasa a permanente con el mismo id (misma reputación).
+  async function saveWithEmail(email) {
+    const { error } = await supabase.auth.updateUser({ email })
+    if (error) {
+      setMessage('No se pudo guardar la cuenta: ' + error.message)
+      return false
+    }
+    setMessage('Te enviamos un correo para confirmar tu cuenta 📩')
+    return true
+  }
+
+  // Magic link para quien ya tiene cuenta y entra desde otro dispositivo:
+  // el enlace lo deja logueado en su usuario de siempre.
+  async function signInWithEmail(email) {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.origin },
+    })
+    if (error) {
+      setMessage('No se pudo enviar el enlace: ' + error.message)
+      return false
+    }
+    setMessage('Te enviamos un enlace de acceso a tu correo 📩')
+    return true
   }
 
   // Activar/desactivar notificaciones de proximidad (pide permiso al activar)
@@ -323,13 +361,14 @@ export default function App() {
           >
             {notifEnabled ? '🔔' : '🔕'}
           </button>
-          {!session ? (
-            <button className="login-btn" onClick={signInAnonymously}>
-              Participar
-            </button>
-          ) : (
-            <ReputationBadge stats={reputation} />
-          )}
+          <AuthMenu
+            session={session}
+            reputation={reputation}
+            onParticipar={signInAnonymously}
+            onLinkGoogle={linkGoogle}
+            onSaveEmail={saveWithEmail}
+            onLoginEmail={signInWithEmail}
+          />
         </div>
       </header>
 

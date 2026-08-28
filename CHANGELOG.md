@@ -9,6 +9,17 @@ y versionado [SemVer](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+### Fixed
+- **Pantalla en blanco cuando falta el `.env`:** `supabaseClient.js` llamaba a
+  `createClient(undefined, undefined)`, que tira `supabaseUrl is required.` al
+  evaluar el módulo — antes de que React monte nada, así que el `ErrorBoundary`
+  (que solo atrapa errores de render) no lo veía y la app quedaba en blanco sin
+  explicación. Ahora el módulo exporta `missingEnvVars` en vez de tirar, y
+  `main.jsx` muestra `<ConfigMissing />` (`src/components/ConfigMissing.jsx`):
+  lista qué variables faltan y cómo cargarlas, incluida la advertencia de que el
+  archivo tiene que llamarse `.env` con el punto adelante (si queda como `env`,
+  Vite no lo lee).
+
 ## [0.4.2] — 2026-06-27
 
 ### Fixed

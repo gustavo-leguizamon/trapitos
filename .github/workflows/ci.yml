@@ -1,0 +1,35 @@
+name: CI
+
+# Corre en cada PR hacia las ramas del flujo (dev -> qas -> main) y también al
+# pushear directo a ellas. El hook de husky solo corre en la máquina de quien
+# commitea; esto valida lo mismo del lado del servidor, antes de mergear.
+on:
+  pull_request:
+    branches: [dev, qas, main]
+  push:
+    branches: [dev, qas, main]
+
+jobs:
+  test:
+    name: Tests y build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # --ignore-scripts no: esbuild necesita su postinstall para bajar el binario.
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Tests
+        run: npm run test:run
+
+      # Sin .env: el build no necesita las credenciales de Supabase (se leen en
+      # runtime), así que esto verifica que compile, no que la app esté configurada.
+      - name: Build
+        run: npm run build

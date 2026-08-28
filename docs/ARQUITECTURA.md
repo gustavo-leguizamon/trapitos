@@ -49,7 +49,8 @@ src/
 │   ├── expiry.js             Antigüedad / "por caducar" de una marca
 │   ├── reputation.js         Puntaje y nivel de reputación del usuario
 │   ├── schedule.js           Franjas horarias del trapito
-│   └── proximity.js          Distancia y alertas de proximidad
+│   ├── proximity.js          Distancia y alertas de proximidad
+│   └── errors.js             Errores de Supabase → mensaje para el usuario
 ├── components/
 │   ├── MapView.jsx           Mapa + marcadores + ViewportLoader + ClickHandler
 │   ├── AddSpotForm.jsx       Formulario de carga (hoja inferior)
@@ -70,7 +71,10 @@ supabase/
     ├── phase6_franjas_multiples.sql Fase 6: franja -> franjas text[] (varias)
     ├── phase8_autor_reputacion.sql Fase 8: vista user_reputation + autor en spots
     ├── phase9_moderacion.sql       Fase 9: abuse_reports + trigger de ocultado
-    └── phase10_reactivar.sql       Fase 10: incluir inactivos + reactivar_trapito
+    ├── phase10_reactivar.sql       Fase 10: incluir inactivos + reactivar_trapito
+    ├── phase11_cuadra.sql          Fase 11: geom_calle + calle_geom en spots_cercanos
+    ├── phase12_antiabuso.sql       Fase 12: límites de uso y antigüedad de cuenta
+    └── phase12_antiabuso_cron.sql  Fase 12: repaso diario de reportes (opcional)
 ```
 
 ## Modelo de datos
@@ -123,8 +127,9 @@ Hace `left join` con `spot_reports` y devuelve por cada trapito los conteos
 conteo de confirmaciones por franja horaria).
 
 ### Caducidad de marcas
-La función `expirar_trapitos(dias_inactividad, umbral_dudoso)` pone en `inactivo`
-los trapitos muy dudosos o sin actividad hace mucho, y devuelve cuántos desactivó.
+La función `expirar_trapitos(dias_inactividad, umbral_dudoso, edad_min_cuenta)` pone
+en `inactivo` los trapitos muy dudosos (contando solo desmentidos de cuentas con
+antigüedad, ver anti-abuso) o sin actividad hace mucho, y devuelve cuántos desactivó.
 Está pensada para ejecutarse de forma programada con **pg_cron** (a diario). El
 `execute` está revocado de `anon`/`authenticated`: es una tarea de mantenimiento.
 
@@ -155,6 +160,45 @@ Row Level Security activado en ambas tablas.
 `abuse_reports`:
 - **SELECT/INSERT/UPDATE**: solo `authenticated` y solo sobre el propio reporte. No es público.
 
+### Anti-abuso de la auth anónima (Fase 12)
+El login anónimo no cuesta nada: cualquiera puede crear usuarios ilimitados desde
+el navegador, así que **la identidad no sirve como control**. RLS dice *quién*
+puede escribir; hace falta además limitar *cuánto*. Se resuelve entero en la base
+(triggers `before insert`), porque no hay backend propio donde ponerlo y el
+cliente es público:
+
+| Acción | Límite |
+|--------|--------|
+| Crear trapito | 10 por hora · 30 por día · **3 en la primera hora de vida de la cuenta** |
+| Crear trapito | no dos marcas propias a menos de **25 m** (anti-*dump* en la misma cuadra) |
+| Votar (`spot_reports`) | 40 por hora · 15 en la primera hora de la cuenta |
+| Reportar abuso | 10 por hora |
+
+El criterio de fondo: **la primera marca y el primer voto salen al instante** (no
+se rompe la UX de "Participar y colaborar"), pero una sesión anónima descartable
+tiene un techo bajo.
+
+Aparte, las acciones **destructivas y automáticas** exigen que la cuenta tenga al
+menos **24 h** de antigüedad para computar:
+- `check_abuse_threshold`: ocultar pide 3 usuarios distintos **maduros**. Antes,
+  3 sesiones anónimas recién creadas bajaban cualquier marca.
+- `expirar_trapitos`: el criterio "muy dudoso" solo cuenta desmentidos de cuentas
+  maduras (el criterio por inactividad no cambia).
+- Los votos de cuentas nuevas **sí** cuentan para el score de confianza que se
+  muestra en el mapa: es reversible y de bajo impacto.
+
+Como el trigger de abuso solo corre al llegar un reporte, `revisar_reportes_abuso()`
+repasa a diario las marcas con reportes de cuentas que ya maduraron
+(`phase12_antiabuso_cron.sql`, junto a la caducidad).
+
+Los límites se avisan con SQLSTATE `PT429` / `PT409`: PostgREST los traduce a
+HTTP 429 / 409 y `src/lib/errors.js` muestra el mensaje de la base tal cual, sin
+prefijo técnico.
+
+**Fuera de la base** (Supabase Dashboard, ver README): captcha en el login anónimo
+y límite de sign-ins por IP. Eso frena la *creación* de cuentas; los triggers
+frenan el *daño* de las que se creen igual.
+
 ## Decisiones de diseño
 
 - **Sin backend propio**: Supabase cubre auth, datos y API. Menos a mantener.
@@ -162,3 +206,5 @@ Row Level Security activado en ambas tablas.
 - **Carga por área visible** (no por radio fijo del GPS): muestra siempre lo que
   está en pantalla y funciona aunque el GPS falle.
 - **Lógica pura aislada** en `src/lib`: testeable sin React ni red.
+- **Los límites anti-abuso viven en la base** (triggers): sin backend propio, es
+  el único lugar donde el cliente no los puede saltear.

@@ -6,6 +6,7 @@ import { usePwaInstall } from './hooks/usePwaInstall'
 import { toPointWKT, toLineWKT, paddedRadius } from './lib/geo'
 import { getBlockForPoint } from './lib/street'
 import { franjaFromDate } from './lib/schedule'
+import { mensajeDeError } from './lib/errors'
 import MapView from './components/MapView'
 import AddSpotForm from './components/AddSpotForm'
 import ReputationBadge from './components/ReputationBadge'
@@ -104,7 +105,7 @@ export default function App() {
   // Login anónimo: el usuario participa sin crear cuenta
   async function signInAnonymously() {
     const { error } = await supabase.auth.signInAnonymously()
-    if (error) setMessage('No se pudo iniciar sesión: ' + error.message)
+    if (error) setMessage(mensajeDeError(error, 'No se pudo iniciar sesión'))
   }
 
   // Activar/desactivar notificaciones de proximidad (pide permiso al activar)
@@ -154,7 +155,7 @@ export default function App() {
       p_franjas: [franjaFromDate()],
     })
     if (error) {
-      setMessage('No se pudo reactivar: ' + error.message)
+      setMessage(mensajeDeError(error, 'No se pudo reactivar'))
       return
     }
     if (!data) {
@@ -178,7 +179,7 @@ export default function App() {
       p_incluir_inactivos: verCaducadosRef.current,
     })
     if (error) {
-      setMessage('Error al cargar trapitos: ' + error.message)
+      setMessage(mensajeDeError(error, 'Error al cargar trapitos'))
       return
     }
     setSpots(data || [])
@@ -217,7 +218,7 @@ export default function App() {
 
     if (error) {
       setSaving(false)
-      setMessage('No se pudo guardar: ' + error.message)
+      setMessage(mensajeDeError(error, 'No se pudo guardar'))
       return
     }
 
@@ -250,7 +251,7 @@ export default function App() {
       { onConflict: 'spot_id,user_id' }
     )
     if (error) {
-      setMessage('No se pudo registrar tu voto: ' + error.message)
+      setMessage(mensajeDeError(error, 'No se pudo registrar tu voto'))
       return
     }
     setMessage(tipo === 'confirma' ? '¡Gracias! Confirmado 👍' : 'Gracias, lo marcamos 👎')
@@ -270,7 +271,7 @@ export default function App() {
       { onConflict: 'spot_id,user_id' }
     )
     if (error) {
-      setMessage('No se pudo enviar el reporte: ' + error.message)
+      setMessage(mensajeDeError(error, 'No se pudo enviar el reporte'))
       return
     }
     setMessage('Gracias, recibimos tu reporte 🙏')

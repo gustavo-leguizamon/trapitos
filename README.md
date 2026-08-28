@@ -16,8 +16,42 @@ PWA construida con React + Vite, mapas con Leaflet/OpenStreetMap y backend en Su
 
 1. Creá un proyecto gratis en [supabase.com](https://supabase.com).
 2. Andá a **SQL Editor** y ejecutá el contenido de [`supabase/schema.sql`](supabase/schema.sql).
-   Esto crea la tabla `trapito_spots`, la función `spots_cercanos` y las políticas de seguridad (RLS).
+   Esto crea la tabla `trapito_spots`, la función `spots_cercanos`, las políticas de
+   seguridad (RLS) y los límites anti-abuso.
 3. Activá el login anónimo: **Authentication > Sign In / Providers > Anonymous** → habilitar.
+
+### 1.b Proteger el login anónimo (recomendado)
+
+El login anónimo no cuesta nada de crear: sin esto, cualquiera puede abrir miles de
+cuentas desde el navegador. Los límites de uso ya están en la base (ver
+[anti-abuso](docs/FUNCIONALIDADES.md#anti-abuso-de-la-auth-anónima-fase-12)), pero
+conviene frenar también la **creación** de cuentas, que se configura en el Dashboard:
+
+1. **Captcha:** **Authentication > Settings > Bot and Abuse Protection** → activar
+   hCaptcha o Cloudflare Turnstile. Requiere pasar el `captchaToken` en
+   `signInAnonymously()` (ver la [doc de Supabase](https://supabase.com/docs/guides/auth/auth-captcha)).
+2. **Límite por IP:** **Authentication > Rate Limits** → bajar *anonymous sign-ins*
+   (por defecto 30/hora por IP) a lo que necesite tu tráfico real.
+3. **Limpieza:** las cuentas anónimas quedan en `auth.users` para siempre. Supabase
+   sugiere borrar periódicamente las que no dejaron nada:
+
+   ```sql
+   delete from auth.users
+   where is_anonymous is true
+     and created_at < now() - interval '30 days'
+     and id not in (select created_by from public.trapito_spots where created_by is not null)
+     and id not in (select user_id from public.spot_reports)
+     and id not in (select user_id from public.abuse_reports);
+   ```
+
+   > Los votos y reportes son `on delete cascade`: borrar un usuario que aportó
+   > algo se llevaría su historial, por eso las tres exclusiones.
+
+### 1.c Programar las tareas de mantenimiento (opcional)
+
+Ejecutá [`supabase/migrations/phase3_caducidad_cron.sql`](supabase/migrations/phase3_caducidad_cron.sql)
+y [`supabase/migrations/phase12_antiabuso_cron.sql`](supabase/migrations/phase12_antiabuso_cron.sql)
+para que **pg_cron** corra a diario la caducidad de marcas y el repaso de reportes de abuso.
 
 ### 2. Configurar variables de entorno
 

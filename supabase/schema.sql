@@ -155,18 +155,23 @@ as $$
 $$;
 
 -- -------------------------------------------------------------
--- Caducidad de marcas (Fase 3)
+-- Caducidad de marcas (Fase 3, endurecida en Fase 12)
 -- Desactiva (status = 'inactivo') los trapitos que:
 --   a) acumulan muchos más desmentidos que confirmaciones, o
 --   b) no tienen actividad (alta ni votos) hace muchos días.
 -- Devuelve cuántos desactivó. Pensada para correr de forma programada (pg_cron).
+-- (a) es destructivo, así que solo cuenta desmentidos de cuentas con antigüedad:
+-- si no, tres sesiones anónimas recién creadas matan cualquier marca.
 -- -------------------------------------------------------------
 create or replace function public.expirar_trapitos(
-  p_dias_inactividad integer default 90,
-  p_umbral_dudoso    integer default 3
+  p_dias_inactividad integer  default 90,
+  p_umbral_dudoso    integer  default 3,
+  p_edad_min_cuenta  interval default interval '24 hours'
 )
 returns integer
 language plpgsql
+security definer
+set search_path = public
 as $$
 declare
   v_afectados integer;
@@ -175,10 +180,14 @@ begin
   set status = 'inactivo'
   where s.status = 'activo'
     and (
-      -- (a) muchos más desmentidos que confirmaciones
+      -- (a) muchos más desmentidos que confirmaciones (solo cuentas maduras)
       (
-        (select count(*) from public.spot_reports r where r.spot_id = s.id and r.tipo = 'desmiente')
-        - (select count(*) from public.spot_reports r where r.spot_id = s.id and r.tipo = 'confirma')
+        (select count(*) from public.spot_reports r
+           join auth.users u on u.id = r.user_id
+          where r.spot_id = s.id and r.tipo = 'desmiente'
+            and u.created_at <= now() - p_edad_min_cuenta)
+        - (select count(*) from public.spot_reports r
+             where r.spot_id = s.id and r.tipo = 'confirma')
       ) >= p_umbral_dudoso
       -- (b) sin actividad (alta ni votos) hace muchos días
       or greatest(
@@ -191,8 +200,10 @@ begin
 end;
 $$;
 
--- Esta función es de mantenimiento: que no la invoquen los clientes.
-revoke execute on function public.expirar_trapitos(integer, integer) from anon, authenticated;
+-- Función de mantenimiento: que no la invoquen los clientes. Se revoca también
+-- de PUBLIC, que por defecto tiene execute sobre toda función nueva (si no, el
+-- revoke a anon/authenticated no alcanza).
+revoke execute on function public.expirar_trapitos(integer, integer, interval) from public, anon, authenticated;
 
 -- -------------------------------------------------------------
 -- Seguridad a nivel de fila (RLS)
@@ -302,7 +313,11 @@ create table if not exists public.abuse_reports (
 create index if not exists abuse_reports_spot_idx
   on public.abuse_reports (spot_id);
 
--- Umbral de reportes (usuarios distintos) para ocultar un trapito
+-- Umbral de reportes (usuarios distintos) para ocultar un trapito.
+-- Fase 12: solo cuentan las cuentas con al menos 24 h de antigüedad. Ocultar es
+-- la acción más destructiva que puede disparar un usuario, y sin este filtro
+-- tres sesiones anónimas recién creadas bajaban cualquier marca. El reporte de
+-- una cuenta nueva igual se guarda (queda para moderación manual).
 create or replace function public.check_abuse_threshold()
 returns trigger
 language plpgsql
@@ -310,13 +325,17 @@ security definer
 set search_path = public
 as $$
 declare
+  c_umbral      constant integer  := 3;
+  c_edad_minima constant interval := interval '24 hours';
   v_count integer;
 begin
-  select count(distinct user_id) into v_count
-  from public.abuse_reports
-  where spot_id = new.spot_id;
+  select count(distinct r.user_id) into v_count
+  from public.abuse_reports r
+  join auth.users u on u.id = r.user_id
+  where r.spot_id = new.spot_id
+    and u.created_at <= now() - c_edad_minima;
 
-  if v_count >= 3 then
+  if v_count >= c_umbral then
     update public.trapito_spots
     set status = 'oculto'
     where id = new.spot_id and status = 'activo';
@@ -324,6 +343,38 @@ begin
   return new;
 end;
 $$;
+
+-- El trigger solo corre al reportar. Si tres cuentas reportaron cuando todavía
+-- eran nuevas, nadie vuelve a evaluar esa marca: esta función repasa todo y se
+-- programa a diario (supabase/migrations/phase12_antiabuso_cron.sql).
+create or replace function public.revisar_reportes_abuso(
+  p_umbral      integer  default 3,
+  p_edad_minima interval default interval '24 hours'
+)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_afectados integer;
+begin
+  update public.trapito_spots s
+  set status = 'oculto'
+  where s.status = 'activo'
+    and (
+      select count(distinct r.user_id)
+      from public.abuse_reports r
+      join auth.users u on u.id = r.user_id
+      where r.spot_id = s.id
+        and u.created_at <= now() - p_edad_minima
+    ) >= p_umbral;
+  get diagnostics v_afectados = row_count;
+  return v_afectados;
+end;
+$$;
+
+revoke execute on function public.revisar_reportes_abuso(integer, interval) from public, anon, authenticated;
 
 drop trigger if exists abuse_threshold_trigger on public.abuse_reports;
 create trigger abuse_threshold_trigger
@@ -395,3 +446,197 @@ end;
 $$;
 
 grant execute on function public.reactivar_trapito(uuid, text[]) to authenticated;
+
+-- =============================================================
+-- Anti-abuso de la auth anónima (Fase 12)
+-- Cualquiera puede crear usuarios anónimos ilimitados desde el navegador, así
+-- que la identidad no vale como control: lo que se limita es el VOLUMEN por
+-- usuario, con un cupo más chico mientras la cuenta es recién nacida.
+-- La primera marca/voto sale al instante (no rompe "Participar y colaborar").
+-- Los errores usan SQLSTATE 'PT429'/'PT409': PostgREST los traduce a HTTP
+-- 429/409 y el front muestra el mensaje tal cual (src/lib/errors.js).
+-- =============================================================
+
+-- Índices de apoyo: los límites cuentan filas por usuario y fecha.
+create index if not exists trapito_spots_autor_idx
+  on public.trapito_spots (created_by, created_at desc);
+
+create index if not exists spot_reports_user_idx
+  on public.spot_reports (user_id, created_at desc);
+
+create index if not exists abuse_reports_user_idx
+  on public.abuse_reports (user_id, created_at desc);
+
+-- ¿La cuenta que hace la acción es "nueva"? security definer porque auth.users
+-- no es legible por el cliente. Null si no hay sesión (service_role).
+create or replace function public.cuenta_mas_nueva_que(p_edad interval)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select (now() - u.created_at) < p_edad
+  from auth.users u
+  where u.id = auth.uid();
+$$;
+
+revoke execute on function public.cuenta_mas_nueva_que(interval) from public, anon, authenticated;
+
+-- Límite de altas de trapitos
+create or replace function public.limitar_altas_spots()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  -- Tuneá los límites acá.
+  c_max_hora         constant integer := 10;  -- marcas por hora
+  c_max_dia          constant integer := 30;  -- marcas por día
+  c_max_cuenta_nueva constant integer := 3;   -- marcas en la 1ª hora de vida de la cuenta
+  c_radio_dup_m      constant double precision := 25;  -- distancia mínima entre marcas propias
+  v_uid   uuid := auth.uid();
+  v_count integer;
+begin
+  -- Sin sesión (service_role, seeds, mantenimiento): no se limita.
+  if v_uid is null then
+    return new;
+  end if;
+
+  select count(*) into v_count
+  from public.trapito_spots
+  where created_by = v_uid and created_at > now() - interval '1 hour';
+
+  if v_count >= c_max_hora then
+    raise exception 'Llegaste al límite de % marcas por hora. Probá de nuevo más tarde.', c_max_hora
+      using errcode = 'PT429';
+  end if;
+
+  select count(*) into v_count
+  from public.trapito_spots
+  where created_by = v_uid and created_at > now() - interval '1 day';
+
+  if v_count >= c_max_dia then
+    raise exception 'Llegaste al límite de % marcas por día. Seguís mañana.', c_max_dia
+      using errcode = 'PT429';
+  end if;
+
+  -- Cupo chico mientras la cuenta es recién nacida: la primera marca sale al
+  -- toque, pero una sesión anónima descartable no puede hacer daño.
+  if coalesce(public.cuenta_mas_nueva_que(interval '1 hour'), false) then
+    select count(*) into v_count
+    from public.trapito_spots
+    where created_by = v_uid;
+
+    if v_count >= c_max_cuenta_nueva then
+      raise exception 'Recién empezás: podés marcar hasta % trapitos en tu primera hora. Mientras tanto, confirmá los que ya están.', c_max_cuenta_nueva
+        using errcode = 'PT429';
+    end if;
+  end if;
+
+  -- Anti-duplicado: no dos marcas propias casi en el mismo lugar. Corta el
+  -- "dump" de decenas de marcas sobre la misma cuadra.
+  if exists (
+    select 1 from public.trapito_spots
+    where created_by = v_uid
+      and st_dwithin(geom, new.geom, c_radio_dup_m)
+  ) then
+    raise exception 'Ya marcaste un trapito casi en el mismo lugar. Si es el mismo, confirmalo desde el mapa.'
+      using errcode = 'PT409';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists limitar_altas_spots_trigger on public.trapito_spots;
+create trigger limitar_altas_spots_trigger
+  before insert on public.trapito_spots
+  for each row execute function public.limitar_altas_spots();
+
+-- Límite de votos. Aplica a insert y update: votar es un upsert.
+create or replace function public.limitar_votos()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  c_max_hora         constant integer := 40;  -- votos por hora
+  c_max_cuenta_nueva constant integer := 15;  -- votos en la 1ª hora de vida de la cuenta
+  v_uid   uuid := auth.uid();
+  v_count integer;
+begin
+  if v_uid is null then
+    return new;
+  end if;
+
+  -- La fila que se está actualizando no cuenta contra sí misma.
+  select count(*) into v_count
+  from public.spot_reports
+  where user_id = v_uid
+    and created_at > now() - interval '1 hour'
+    and id is distinct from new.id;
+
+  if v_count >= c_max_hora then
+    raise exception 'Votaste muchas veces seguidas. Esperá un rato y seguí.'
+      using errcode = 'PT429';
+  end if;
+
+  if coalesce(public.cuenta_mas_nueva_que(interval '1 hour'), false) then
+    select count(*) into v_count
+    from public.spot_reports
+    where user_id = v_uid
+      and id is distinct from new.id;
+
+    if v_count >= c_max_cuenta_nueva then
+      raise exception 'Recién empezás: podés votar hasta % veces en tu primera hora.', c_max_cuenta_nueva
+        using errcode = 'PT429';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists limitar_votos_trigger on public.spot_reports;
+create trigger limitar_votos_trigger
+  before insert or update on public.spot_reports
+  for each row execute function public.limitar_votos();
+
+-- Límite de reportes de abuso
+create or replace function public.limitar_reportes_abuso()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  c_max_hora constant integer := 10;  -- reportes por hora
+  v_uid   uuid := auth.uid();
+  v_count integer;
+begin
+  if v_uid is null then
+    return new;
+  end if;
+
+  select count(*) into v_count
+  from public.abuse_reports
+  where user_id = v_uid
+    and created_at > now() - interval '1 hour'
+    and id is distinct from new.id;
+
+  if v_count >= c_max_hora then
+    raise exception 'Enviaste muchos reportes seguidos. Esperá un rato y seguí.'
+      using errcode = 'PT429';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists limitar_reportes_abuso_trigger on public.abuse_reports;
+create trigger limitar_reportes_abuso_trigger
+  before insert or update on public.abuse_reports
+  for each row execute function public.limitar_reportes_abuso();

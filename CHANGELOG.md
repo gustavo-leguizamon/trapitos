@@ -14,7 +14,7 @@ y versionado [SemVer](https://semver.org/lang/es/).
   usuarios ilimitados desde el navegador, así que RLS (que define *quién* escribe)
   no alcanzaba: faltaba limitar *cuánto*. Se agregaron límites en la base
   (`supabase/migrations/phase12_antiabuso.sql`), imposibles de saltear desde el cliente:
-  - **Marcas:** 10 por hora, 30 por día y 3 durante la primera hora de vida de la
+  - **Marcas:** 10 por hora, 30 por día y 8 durante la primera hora de vida de la
     cuenta; además no se aceptan dos marcas propias a menos de 25 m (anti-*dump*
     sobre la misma cuadra).
   - **Votos:** 40 por hora, 15 en la primera hora de la cuenta. **Reportes de
@@ -34,6 +34,17 @@ y versionado [SemVer](https://semver.org/lang/es/).
   (es reversible y de bajo impacto).
 
 ### Added
+- **Captcha opcional en el login anónimo (Cloudflare Turnstile):** al tocar
+  "Participar" se resuelve un desafío antes del `signInAnonymously()` y el token
+  viaja con el sign-in. Es **invisible** (`appearance: 'interaction-only'`) salvo
+  que Cloudflare decida desafiar; mientras tanto el botón muestra "Verificando…".
+  Se activa solo si está definida `VITE_TURNSTILE_SITE_KEY`: sin esa variable no
+  se carga ningún script externo y el login funciona igual que antes. Lógica pura
+  en `src/lib/captcha.js`, widget y ciclo de vida del token en
+  `src/hooks/useCaptcha.js`. Configuración en el README (§1.b): desplegar primero
+  la app con la site key y recién después activar el captcha en Supabase.
+  Cierra el flanco que los límites de la base no cubren: acotan el daño por
+  cuenta, pero no frenan la fábrica de cuentas.
 - **Mensajes de error legibles** (`src/lib/errors.js`): los límites anti-abuso
   responden con SQLSTATE `PT429`/`PT409` (PostgREST los traduce a HTTP 429/409) y
   la app muestra el texto de la base tal cual, sin el prefijo técnico. El 429 de

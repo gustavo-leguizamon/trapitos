@@ -27,9 +27,25 @@ cuentas desde el navegador. Los límites de uso ya están en la base (ver
 [anti-abuso](docs/FUNCIONALIDADES.md#anti-abuso-de-la-auth-anónima-fase-12)), pero
 conviene frenar también la **creación** de cuentas, que se configura en el Dashboard:
 
-1. **Captcha:** **Authentication > Settings > Bot and Abuse Protection** → activar
-   hCaptcha o Cloudflare Turnstile. Requiere pasar el `captchaToken` en
-   `signInAnonymously()` (ver la [doc de Supabase](https://supabase.com/docs/guides/auth/auth-captcha)).
+1. **Captcha (Cloudflare Turnstile).** Ya está cableado en la app y es opcional:
+   se activa solo si definís `VITE_TURNSTILE_SITE_KEY`. Es invisible salvo que
+   Cloudflare decida desafiar a quien esté del otro lado.
+
+   1. Creá un widget en [Cloudflare Turnstile](https://dash.cloudflare.com) →
+      te da una **site key** (pública) y una **secret key** (privada).
+   2. Poné la **site key** en tu `.env` (y en las variables de entorno de Vercel)
+      y **desplegá**:
+      ```
+      VITE_TURNSTILE_SITE_KEY=0x4AAAAAAA...
+      ```
+   3. Recién después, cargá la **secret key** en Supabase: **Authentication >
+      Settings > Bot and Abuse Protection** → activar *Turnstile by Cloudflare*.
+
+   > El orden importa. Mandar el token de más es inofensivo (Supabase lo ignora
+   > mientras el captcha esté apagado), pero al revés el login anónimo queda roto
+   > hasta el deploy: Supabase pide un token que la app todavía no manda.
+   > Sin la variable, la app funciona igual que siempre: `getToken()` devuelve
+   > `null` y el sign-in va derecho.
 2. **Límite por IP:** **Authentication > Rate Limits** → bajar *anonymous sign-ins*
    (por defecto 30/hora por IP) a lo que necesite tu tráfico real.
 3. **Limpieza:** las cuentas anónimas quedan en `auth.users` para siempre. Supabase

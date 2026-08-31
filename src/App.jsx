@@ -3,6 +3,8 @@ import { supabase } from './supabaseClient'
 import { useGeolocation } from './hooks/useGeolocation'
 import { useProximityNotifications } from './hooks/useProximityNotifications'
 import { usePwaInstall } from './hooks/usePwaInstall'
+import { useCaptcha } from './hooks/useCaptcha'
+import { signInOptions } from './lib/captcha'
 import { toPointWKT, toLineWKT, paddedRadius } from './lib/geo'
 import { getBlockForPoint } from './lib/street'
 import { franjaFromDate } from './lib/schedule'
@@ -20,6 +22,7 @@ export default function App() {
   const [pendingBlock, setPendingBlock] = useState(null)
   const [blockLoading, setBlockLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [signingIn, setSigningIn] = useState(false)
   const [recenterTrigger, setRecenterTrigger] = useState(0)
   const [message, setMessage] = useState(null)
   const [reputation, setReputation] = useState(null)
@@ -42,6 +45,10 @@ export default function App() {
 
   // Instalación de la PWA
   const { canInstall, promptInstall } = usePwaInstall()
+
+  // Captcha del login anónimo. Apagado si no hay VITE_TURNSTILE_SITE_KEY:
+  // en ese caso getToken() devuelve null y el sign-in va como siempre.
+  const { containerRef: captchaRef, getToken: getCaptchaToken } = useCaptcha()
 
   // --- Detectar la cuadra (OSM) de la ubicación pendiente ---
   // Al elegir un punto, consultamos OpenStreetMap el tramo de calle por el que
@@ -102,10 +109,23 @@ export default function App() {
     else setReputation(null)
   }, [session, loadReputation])
 
-  // Login anónimo: el usuario participa sin crear cuenta
+  // Login anónimo: el usuario participa sin crear cuenta.
+  // Si el captcha está configurado, primero se resuelve el desafío (invisible
+  // salvo que Cloudflare quiera preguntar algo) y el token viaja con el sign-in.
   async function signInAnonymously() {
-    const { error } = await supabase.auth.signInAnonymously()
-    if (error) setMessage(mensajeDeError(error, 'No se pudo iniciar sesión'))
+    if (signingIn) return
+    setSigningIn(true)
+    try {
+      const captchaToken = await getCaptchaToken()
+      const { error } = await supabase.auth.signInAnonymously(signInOptions(captchaToken))
+      if (error) setMessage(mensajeDeError(error, 'No se pudo iniciar sesión'))
+    } catch (e) {
+      // El captcha no se pudo resolver: script bloqueado, sin red, o el desafío
+      // quedó sin responder. El mensaje ya viene redactado desde el hook.
+      setMessage(e?.message || 'No se pudo verificar. Probá de nuevo.')
+    } finally {
+      setSigningIn(false)
+    }
   }
 
   // Activar/desactivar notificaciones de proximidad (pide permiso al activar)
@@ -325,13 +345,15 @@ export default function App() {
             {notifEnabled ? '🔔' : '🔕'}
           </button>
           {!session ? (
-            <button className="login-btn" onClick={signInAnonymously}>
-              Participar
+            <button className="login-btn" onClick={signInAnonymously} disabled={signingIn}>
+              {signingIn ? 'Verificando…' : 'Participar'}
             </button>
           ) : (
             <ReputationBadge stats={reputation} />
           )}
         </div>
+        {/* Donde se monta el captcha. Vacío mientras no haga falta desafiar. */}
+        <div className="captcha-host" ref={captchaRef} />
       </header>
 
       {/* Botones flotantes */}

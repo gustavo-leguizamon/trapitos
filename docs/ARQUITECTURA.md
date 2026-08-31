@@ -42,7 +42,8 @@ src/
 ├── supabaseClient.js         Cliente de Supabase (lee VITE_SUPABASE_*)
 ├── hooks/
 │   ├── useGeolocation.js     Observa la ubicación del usuario (watchPosition)
-│   └── useProximityNotifications.js  Avisos al acercarse a un trapito
+│   ├── useProximityNotifications.js  Avisos al acercarse a un trapito
+│   └── useCaptcha.js         Widget de Turnstile y token para el sign-in
 ├── lib/
 │   ├── geo.js                Helpers puros: toPointWKT, paddedRadius
 │   ├── confidence.js         Score y nivel de confianza a partir de votos
@@ -50,7 +51,8 @@ src/
 │   ├── reputation.js         Puntaje y nivel de reputación del usuario
 │   ├── schedule.js           Franjas horarias del trapito
 │   ├── proximity.js          Distancia y alertas de proximidad
-│   └── errors.js             Errores de Supabase → mensaje para el usuario
+│   ├── errors.js             Errores de Supabase → mensaje para el usuario
+│   └── captcha.js            Captcha opcional del login anónimo (Turnstile)
 ├── components/
 │   ├── MapView.jsx           Mapa + marcadores + ViewportLoader + ClickHandler
 │   ├── AddSpotForm.jsx       Formulario de carga (hoja inferior)
@@ -169,7 +171,7 @@ cliente es público:
 
 | Acción | Límite |
 |--------|--------|
-| Crear trapito | 10 por hora · 30 por día · **3 en la primera hora de vida de la cuenta** |
+| Crear trapito | 10 por hora · 30 por día · **8 en la primera hora de vida de la cuenta** |
 | Crear trapito | no dos marcas propias a menos de **25 m** (anti-*dump* en la misma cuadra) |
 | Votar (`spot_reports`) | 40 por hora · 15 en la primera hora de la cuenta |
 | Reportar abuso | 10 por hora |
@@ -195,9 +197,14 @@ Los límites se avisan con SQLSTATE `PT429` / `PT409`: PostgREST los traduce a
 HTTP 429 / 409 y `src/lib/errors.js` muestra el mensaje de la base tal cual, sin
 prefijo técnico.
 
-**Fuera de la base** (Supabase Dashboard, ver README): captcha en el login anónimo
-y límite de sign-ins por IP. Eso frena la *creación* de cuentas; los triggers
-frenan el *daño* de las que se creen igual.
+**Antes de la base:** el **captcha en el login anónimo** (Cloudflare Turnstile)
+frena la *creación* de cuentas, mientras que los triggers frenan el *daño* de las
+que se creen igual. Está cableado en `src/hooks/useCaptcha.js` y es **opcional**:
+se enciende solo si existe `VITE_TURNSTILE_SITE_KEY`, así que sin configurar nada
+la app se comporta igual que antes (`getToken()` devuelve `null` y el sign-in va
+derecho). El widget se monta con `appearance: 'interaction-only'`: invisible salvo
+que Cloudflare quiera desafiar. Falta además bajar el límite de sign-ins por IP en
+el Dashboard (ver README).
 
 ## Decisiones de diseño
 

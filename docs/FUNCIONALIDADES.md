@@ -27,6 +27,7 @@
 | 17 | Instalación PWA | Íconos + manifiesto para instalar en el celular; botón "📲 Instalar" | ✅ | — (verificación manual) |
 | 18 | Pintar la cuadra | Detecta la cuadra (OSM/Overpass) y la pinta como línea coloreada por confianza, en vez de un solo punto | ✅ | `src/lib/street.test.js`, `src/lib/geo.test.js`, `src/lib/confidence.test.js` |
 | 19 | Anti-abuso de la auth anónima | Límites de uso por usuario y antigüedad mínima de cuenta para las acciones destructivas | ✅ | `src/lib/errors.test.js` (mensajes); límites en `supabase/schema.sql` |
+| 20 | Captcha del login anónimo | Turnstile invisible al tocar "Participar"; opcional, se activa con `VITE_TURNSTILE_SITE_KEY` | ✅ | `src/lib/captcha.test.js`, `src/hooks/useCaptcha.test.js` |
 
 ## Detalle del flujo
 
@@ -133,7 +134,7 @@ el cliente):
 
 | Acción | Límite |
 |--------|--------|
-| Marcar un trapito | 10 por hora · 30 por día · **3 en la primera hora de vida de la cuenta** |
+| Marcar un trapito | 10 por hora · 30 por día · **8 en la primera hora de vida de la cuenta** |
 | Marcar un trapito | no dos marcas propias a menos de **25 m** entre sí |
 | Votar (Confirmo / Ya no está) | 40 por hora · 15 en la primera hora de la cuenta |
 | Reportar abuso | 10 por hora |
@@ -151,9 +152,30 @@ cuentan para el score de confianza que se muestra: es reversible y de bajo impac
 ("Llegaste al límite de 10 marcas por hora…", "Ya marcaste un trapito casi en el
 mismo lugar…") y se muestra tal cual, sin prefijo técnico (`src/lib/errors.js`).
 
-**Complemento fuera de la base:** captcha en el login anónimo y límite de sign-ins
-por IP, ambos en el Supabase Dashboard (ver README). Eso frena la *creación* de
-cuentas; los triggers frenan el *daño* de las que se creen igual.
+**Complemento:** el captcha del login anónimo (abajo) y el límite de sign-ins por
+IP del Supabase Dashboard (ver README). Eso frena la *creación* de cuentas; los
+triggers frenan el *daño* de las que se creen igual.
+
+### Captcha del login anónimo (Fase 12)
+Al tocar **"Participar"**, antes del `signInAnonymously()` se resuelve un desafío
+de **Cloudflare Turnstile** y el token viaja con el sign-in. El widget se monta con
+`appearance: 'interaction-only'`: **no se ve nada** salvo que Cloudflare decida
+preguntar algo; mientras tanto el botón muestra "Verificando…" y queda deshabilitado.
+
+Es **opcional**: se activa solo si está definida `VITE_TURNSTILE_SITE_KEY`. Sin esa
+variable, `getToken()` devuelve `null`, no se carga ningún script externo y el
+login funciona exactamente como antes — así los tests, el desarrollo local y quien
+no lo haya configurado no se enteran de que existe.
+
+- Lógica pura en `src/lib/captcha.js` (¿está activo?, opciones del sign-in).
+- El widget y el ciclo de vida del token en `src/hooks/useCaptcha.js`: carga el
+  script una sola vez, reusa el widget entre intentos (`reset`, porque los tokens
+  son de un solo uso), comparte un pedido en curso entre llamadas simultáneas y
+  corta a los 60 s.
+- Si el script queda bloqueado (adblocker, sin red) o el desafío no se responde,
+  el error sale como un toast en castellano en vez de dejar el botón colgado.
+- Configuración en el README (§1.b). **El orden importa:** primero desplegar la app
+  con la site key, después activar el captcha en Supabase.
 
 ### Reputación de usuarios (Fase 4)
 - La función SQL `mi_reputacion()` (security definer, acotada a `auth.uid()`)

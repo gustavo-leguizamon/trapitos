@@ -69,7 +69,7 @@ declare
   -- Tuneá los límites acá.
   c_max_hora         constant integer := 10;  -- marcas por hora
   c_max_dia          constant integer := 30;  -- marcas por día
-  c_max_cuenta_nueva constant integer := 3;   -- marcas en la 1ª hora de vida de la cuenta
+  c_max_cuenta_nueva constant integer := 8;   -- marcas en la 1ª hora de vida de la cuenta
   c_radio_dup_m      constant double precision := 25;  -- distancia mínima entre marcas propias
   v_uid   uuid := auth.uid();
   v_count integer;

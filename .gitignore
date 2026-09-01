@@ -5,8 +5,9 @@ dist
 *.log
 .DS_Store
 
-# Credencial temporal para aplicar migraciones con el CLI (nunca se commitea)
+# Credenciales de la base para el CLI (nunca se commitean)
 .supabase-db-url
+db.txt
 
 # Artefactos del CLI de Supabase
 supabase/.temp/

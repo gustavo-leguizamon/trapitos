@@ -9,6 +9,47 @@ y versionado [SemVer](https://semver.org/lang/es/).
 
 ## [Sin publicar]
 
+### Security
+- **Anti-abuso de la auth anónima (Fase 12):** el login anónimo permite crear
+  usuarios ilimitados desde el navegador, así que RLS (que define *quién* escribe)
+  no alcanzaba: faltaba limitar *cuánto*. Se agregaron límites en la base
+  (`supabase/migrations/phase12_antiabuso.sql`), imposibles de saltear desde el cliente:
+  - **Marcas:** 10 por hora, 30 por día y 8 durante la primera hora de vida de la
+    cuenta; además no se aceptan dos marcas propias a menos de 25 m (anti-*dump*
+    sobre la misma cuadra).
+  - **Votos:** 40 por hora, 15 en la primera hora de la cuenta. **Reportes de
+    abuso:** 10 por hora.
+  - La primera marca y el primer voto siguen saliendo al instante: no cambia el
+    flujo de "Participar y colaborar".
+- **Ocultar por abuso pide cuentas con antigüedad:** antes, 3 sesiones anónimas
+  recién creadas ocultaban cualquier trapito. Ahora `check_abuse_threshold` solo
+  cuenta usuarios con al menos 24 h de antigüedad (el reporte de una cuenta nueva
+  igual se guarda para moderación manual). Se agregó `revisar_reportes_abuso()`,
+  que repasa a diario las marcas cuyos reportantes ya maduraron
+  (`phase12_antiabuso_cron.sql`).
+- **Caducidad por "dudoso" pide cuentas con antigüedad:** `expirar_trapitos` suma
+  un parámetro `p_edad_min_cuenta` (24 h por defecto) y solo cuenta desmentidos de
+  cuentas maduras. El criterio por inactividad no cambia. Los votos de cuentas
+  nuevas siguen contando para el score de confianza que se muestra en el mapa
+  (es reversible y de bajo impacto).
+
+### Added
+- **Captcha opcional en el login anónimo (Cloudflare Turnstile):** al tocar
+  "Participar" se resuelve un desafío antes del `signInAnonymously()` y el token
+  viaja con el sign-in. Es **invisible** (`appearance: 'interaction-only'`) salvo
+  que Cloudflare decida desafiar; mientras tanto el botón muestra "Verificando…".
+  Se activa solo si está definida `VITE_TURNSTILE_SITE_KEY`: sin esa variable no
+  se carga ningún script externo y el login funciona igual que antes. Lógica pura
+  en `src/lib/captcha.js`, widget y ciclo de vida del token en
+  `src/hooks/useCaptcha.js`. Configuración en el README (§1.b): desplegar primero
+  la app con la site key y recién después activar el captcha en Supabase.
+  Cierra el flanco que los límites de la base no cubren: acotan el daño por
+  cuenta, pero no frenan la fábrica de cuentas.
+- **Mensajes de error legibles** (`src/lib/errors.js`): los límites anti-abuso
+  responden con SQLSTATE `PT429`/`PT409` (PostgREST los traduce a HTTP 429/409) y
+  la app muestra el texto de la base tal cual, sin el prefijo técnico. El 429 de
+  Supabase Auth (demasiados "Participar" desde la misma IP) se traduce al castellano.
+
 ### Fixed
 - **Pantalla en blanco cuando falta el `.env`:** `supabaseClient.js` llamaba a
   `createClient(undefined, undefined)`, que tira `supabaseUrl is required.` al

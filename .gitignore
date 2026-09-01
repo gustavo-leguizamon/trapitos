@@ -4,3 +4,10 @@ dist
 .env.local
 *.log
 .DS_Store
+
+# Credenciales de la base para el CLI (nunca se commitean)
+.supabase-db-url
+db.txt
+
+# Artefactos del CLI de Supabase
+supabase/.temp/

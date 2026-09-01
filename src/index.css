@@ -95,6 +95,26 @@ body,
   cursor: pointer;
 }
 
+.login-btn:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+/* Captcha del login anónimo (Turnstile, opcional). Con appearance
+   "interaction-only" no se ve nada; solo ocupa lugar debajo de la barra
+   cuando Cloudflare decide desafiar al usuario. */
+.captcha-host {
+  position: absolute;
+  top: 56px;
+  right: 16px;
+  z-index: 1001;
+  pointer-events: auto;
+}
+
+.captcha-host:empty {
+  display: none;
+}
+
 .badge {
   background: rgba(255, 255, 255, 0.2);
   padding: 6px 12px;

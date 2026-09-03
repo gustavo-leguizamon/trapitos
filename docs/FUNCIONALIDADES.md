@@ -25,7 +25,9 @@
 | 15 | Moderación / reportes de abuso | "⚠️ Reportar" con motivo; al llegar a 3 reportes distintos el trapito se oculta | ✅ | `src/lib/abuse.test.js`, `src/components/SpotPopup.test.jsx` |
 | 16 | Reactivar caducados | Toggle ♻️ para ver los caducados y reactivarlos (no los ocultos por abuso) | ✅ | `src/components/SpotPopup.test.jsx` |
 | 17 | Instalación PWA | Íconos + manifiesto para instalar en el celular; botón "📲 Instalar" | ✅ | — (verificación manual) |
-| 17 | Pintar la cuadra | Detecta la cuadra (OSM/Overpass) y la pinta como línea coloreada por confianza, en vez de un solo punto | ✅ | `src/lib/street.test.js`, `src/lib/geo.test.js`, `src/lib/confidence.test.js` |
+| 18 | Pintar la cuadra | Detecta la cuadra (OSM/Overpass) y la pinta como línea coloreada por confianza, en vez de un solo punto | ✅ | `src/lib/street.test.js`, `src/lib/geo.test.js`, `src/lib/confidence.test.js` |
+| 19 | Anti-abuso de la auth anónima | Límites de uso por usuario y antigüedad mínima de cuenta para las acciones destructivas | ✅ | `src/lib/errors.test.js` (mensajes); límites en `supabase/schema.sql` |
+| 20 | Captcha del login anónimo | Turnstile invisible al tocar "Participar"; opcional, se activa con `VITE_TURNSTILE_SITE_KEY` | ✅ | `src/lib/captcha.test.js`, `src/hooks/useCaptcha.test.js` |
 
 ## Detalle del flujo
 
@@ -60,9 +62,10 @@
 - En el popup se muestra la **antigüedad** ("visto hace N días", a partir de
   `last_activity` = alta o último voto) y un aviso **⏳ por caducar** cuando está
   dentro de los últimos 14 días antes del límite (`src/lib/expiry.js`).
-- La función SQL **`expirar_trapitos(dias=90, umbral=3)`** pone en `inactivo`
-  (deja de mostrarse) los trapitos que:
-  - acumulan `desmentidos − confirmaciones >= umbral` (muy dudosos), **o**
+- La función SQL **`expirar_trapitos(dias=90, umbral=3, edad_cuenta='24 hours')`**
+  pone en `inactivo` (deja de mostrarse) los trapitos que:
+  - acumulan `desmentidos − confirmaciones >= umbral` (muy dudosos), contando solo
+    desmentidos de cuentas con al menos `edad_cuenta` de antigüedad (ver Fase 12), **o**
   - no tienen actividad (alta ni votos) hace más de `dias` días.
 - Se programa con **pg_cron** para correr a diario (ver
   `supabase/migrations/phase3_caducidad_cron.sql`). Es reversible: cambiar el
@@ -111,8 +114,68 @@
   Spam / Otro (`src/lib/abuse.js`).
 - Se guarda en `abuse_reports` (un reporte por usuario y trapito). RLS: cada uno crea
   y ve solo lo suyo (no es público).
-- Un **trigger** (security definer) cuenta usuarios distintos: al llegar a **3**, pone
-  el trapito en `status = 'oculto'` y deja de mostrarse. Reversible por un admin.
+- Un **trigger** (security definer) cuenta usuarios distintos **con al menos 24 h de
+  antigüedad**: al llegar a **3**, pone el trapito en `status = 'oculto'` y deja de
+  mostrarse. Reversible por un admin. El filtro de antigüedad es lo que impide
+  ocultar cualquier marca con tres sesiones anónimas recién creadas (ver Fase 12).
+- El reporte de una cuenta nueva **igual se guarda** (queda para moderación manual);
+  simplemente no dispara el ocultado automático. Como el trigger solo corre al
+  reportar, `revisar_reportes_abuso()` repasa a diario las marcas cuyos reportantes
+  ya maduraron.
+
+### Anti-abuso de la auth anónima (Fase 12)
+El login anónimo es gratis e ilimitado: cualquiera puede abrir cuentas desde el
+navegador. RLS define **quién** escribe, pero no **cuánto**, así que la app tenía
+tres agujeros: inundar el mapa de marcas, hundir una marca a fuerza de "ya no está"
+y —el peor— ocultar cualquier trapito con solo 3 sesiones recién creadas.
+
+**Límites de uso** (triggers `before insert` en la base, imposibles de saltear desde
+el cliente):
+
+| Acción | Límite |
+|--------|--------|
+| Marcar un trapito | 10 por hora · 30 por día · **8 en la primera hora de vida de la cuenta** |
+| Marcar un trapito | no dos marcas propias a menos de **25 m** entre sí |
+| Votar (Confirmo / Ya no está) | 40 por hora · 15 en la primera hora de la cuenta |
+| Reportar abuso | 10 por hora |
+
+La primera marca y el primer voto salen **al instante**: el cupo reducido de la
+primera hora acota el daño de una sesión descartable sin romper el flujo de
+"Participar y colaborar".
+
+**Antigüedad mínima de cuenta (24 h)** para todo lo que sea destructivo y automático:
+ocultar por abuso (Fase 9) y caducar por dudoso (Fase 3). Un ataque Sybil pasa a
+costar 24 h de espera por cuenta en vez de un F5. Los votos de cuentas nuevas **sí**
+cuentan para el score de confianza que se muestra: es reversible y de bajo impacto.
+
+**En pantalla:** cuando se toca un límite, el mensaje viene escrito desde la base
+("Llegaste al límite de 10 marcas por hora…", "Ya marcaste un trapito casi en el
+mismo lugar…") y se muestra tal cual, sin prefijo técnico (`src/lib/errors.js`).
+
+**Complemento:** el captcha del login anónimo (abajo) y el límite de sign-ins por
+IP del Supabase Dashboard (ver README). Eso frena la *creación* de cuentas; los
+triggers frenan el *daño* de las que se creen igual.
+
+### Captcha del login anónimo (Fase 12)
+Al tocar **"Participar"**, antes del `signInAnonymously()` se resuelve un desafío
+de **Cloudflare Turnstile** y el token viaja con el sign-in. El widget se monta con
+`appearance: 'interaction-only'`: **no se ve nada** salvo que Cloudflare decida
+preguntar algo; mientras tanto el botón muestra "Verificando…" y queda deshabilitado.
+
+Es **opcional**: se activa solo si está definida `VITE_TURNSTILE_SITE_KEY`. Sin esa
+variable, `getToken()` devuelve `null`, no se carga ningún script externo y el
+login funciona exactamente como antes — así los tests, el desarrollo local y quien
+no lo haya configurado no se enteran de que existe.
+
+- Lógica pura en `src/lib/captcha.js` (¿está activo?, opciones del sign-in).
+- El widget y el ciclo de vida del token en `src/hooks/useCaptcha.js`: carga el
+  script una sola vez, reusa el widget entre intentos (`reset`, porque los tokens
+  son de un solo uso), comparte un pedido en curso entre llamadas simultáneas y
+  corta a los 60 s.
+- Si el script queda bloqueado (adblocker, sin red) o el desafío no se responde,
+  el error sale como un toast en castellano en vez de dejar el botón colgado.
+- Configuración en el README (§1.b). **El orden importa:** primero desplegar la app
+  con la site key, después activar el captcha en Supabase.
 
 ### Reputación de usuarios (Fase 4)
 - La función SQL `mi_reputacion()` (security definer, acotada a `auth.uid()`)

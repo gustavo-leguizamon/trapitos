@@ -28,6 +28,7 @@
 | 18 | Pintar la cuadra | Detecta la cuadra (OSM/Overpass) y la pinta como línea coloreada por confianza, en vez de un solo punto | ✅ | `src/lib/street.test.js`, `src/lib/geo.test.js`, `src/lib/confidence.test.js` |
 | 19 | Anti-abuso de la auth anónima | Límites de uso por usuario y antigüedad mínima de cuenta para las acciones destructivas | ✅ | `src/lib/errors.test.js` (mensajes); límites en `supabase/schema.sql` |
 | 20 | Captcha del login anónimo | Turnstile invisible al tocar "Participar"; opcional, se activa con `VITE_TURNSTILE_SITE_KEY` | ✅ | `src/lib/captcha.test.js`, `src/hooks/useCaptcha.test.js` |
+| 21 | Backoffice de administración | Panel en `/admin` para moderar marcas y correr el mantenimiento; solo para los usuarios de `public.admins` | ✅ | `src/lib/admin.test.js`, `src/admin/*.test.jsx`; permisos en `supabase/schema.sql` |
 
 ## Detalle del flujo
 
@@ -203,6 +204,33 @@ no lo haya configurado no se enteran de que existe.
 - `spots_cercanos` devuelve `horarios` (jsonb con el conteo por franja; una
   confirmación suma a todas sus franjas) y el popup muestra
   *"🕒 Suele estar: 🌇 Tarde (4) · 🌅 Mañana (1)"*, ordenado por cantidad.
+
+### Backoffice de administración (Fase 13)
+Panel en **`/admin`**, dentro de la misma app. Es para el dueño del proyecto: la
+moderación de todos los días la hace la comunidad (votos y reportes), esto es
+para lo que la comunidad no puede resolver.
+
+1. **Entrar:** email + contraseña de un usuario real (no anónimo). Con la sesión
+   abierta, quien dice si sos admin es la base (`es_admin()`); si no lo sos, el
+   panel muestra "Sin permisos" y todas las llamadas responden 403.
+2. **Listado:** filtros por estado (todos / activo / caducado / oculto), búsqueda
+   por calle o detalle, y un filtro "solo con reportes". A diferencia del mapa,
+   acá se ven **también las marcas ocultas por abuso** — que son justo las que
+   hay que revisar — con los motivos agrupados (*"⚠️ Spam ×2 · Falso"*), los
+   votos, la antigüedad de la cuenta del autor y la última actividad.
+3. **Acciones por marca:** publicar / caducar / ocultar (el estado actual nunca
+   se ofrece), corregir calle y detalle, y borrar. Borrar pide confirmación en
+   dos pasos y se lleva los votos y reportes de esa marca por cascada; para casi
+   todo alcanza con **ocultar**, que es reversible.
+4. **Mantenimiento a pedido:** correr ahora la caducidad de marcas, el repaso de
+   reportes de abuso (los dos corren solos a diario con pg_cron) y limpiar las
+   cuentas anónimas viejas que no dejaron nada — con un botón que **cuenta**
+   cuántas se borrarían antes de borrarlas.
+
+Los permisos no están en la pantalla sino en la base: cada operación es una
+función `admin_*` con la guarda `es_admin()` adentro. Ver
+[arquitectura](ARQUITECTURA.md#backoffice-de-administración-fase-13) y la puesta
+en marcha en el [README](../README.md#1d-habilitar-el-backoffice-opcional).
 
 ## Funcionalidades planificadas (no implementadas)
 

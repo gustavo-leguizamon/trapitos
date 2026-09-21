@@ -30,6 +30,8 @@ npm run test:ui   # interfaz visual de Vitest
 | `src/lib/geo.test.js` | `toPointWKT` (orden lng/lat) y `paddedRadius` (radio + mínimo) |
 | `src/hooks/useGeolocation.test.js` | GPS ok, permiso rechazado, sin soporte |
 | `src/components/AddSpotForm.test.jsx` | render, submit (trim), cancelar, estado "guardando" |
+| `src/lib/admin.test.js` | ruta `/admin`, estados y acciones ofrecidas, normalización de filas |
+| `src/admin/*.test.jsx` | login, acciones de la tabla (con confirmación de borrado), mantenimiento |
 
 ## Regla de oro
 

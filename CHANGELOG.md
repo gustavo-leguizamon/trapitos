@@ -34,6 +34,28 @@ y versionado [SemVer](https://semver.org/lang/es/).
   (es reversible y de bajo impacto).
 
 ### Added
+- **Backoffice de administración (Fase 13):** panel en **`/admin`**, dentro de la
+  misma app y en un chunk aparte (no pesa en el mapa, y queda fuera del precache
+  del service worker). Permite ver **todas** las marcas —incluidas las ocultas
+  por abuso, que en el mapa no aparecen— con sus votos, los motivos de reporte
+  agrupados y la antigüedad de la cuenta del autor; filtrar por estado, texto o
+  "solo con reportes"; publicar / caducar / ocultar; corregir calle y detalle;
+  borrar (con confirmación en dos pasos); y correr a mano la caducidad, el
+  repaso de reportes y la limpieza de cuentas anónimas viejas (con un botón que
+  cuenta antes de borrar).
+  - **Los permisos viven en la base, no en la pantalla.** El bundle y la
+    `anon key` son públicos: cualquiera puede abrir `/admin` y ver el login. Lo
+    que separa al admin del resto es que todas las operaciones son funciones
+    `admin_*` (security definer) con la guarda `es_admin()` adentro —
+    `auth.uid()` tiene que estar en la nueva tabla `public.admins` y la cuenta
+    **no** puede ser anónima. Si no, la base responde `PT403` → HTTP 403.
+  - **Las políticas RLS no se ensancharon** para el admin: su poder es
+    exactamente la lista de funciones `admin_*`, y para poder algo nuevo hay que
+    agregarlo a propósito. `public.admins` tiene RLS con cero políticas (ningún
+    cliente la lee ni la escribe; se administra desde el Dashboard).
+  - Puesta en marcha en el [README](README.md#1d-habilitar-el-backoffice-opcional):
+    `supabase/migrations/phase13_backoffice.sql`, crear el usuario admin,
+    insertarlo en `public.admins` y **apagar los signups de email** en Supabase.
 - **Captcha opcional en el login anónimo (Cloudflare Turnstile):** al tocar
   "Participar" se resuelve un desafío antes del `signInAnonymously()` y el token
   viaja con el sign-in. Es **invisible** (`appearance: 'interaction-only'`) salvo
@@ -49,6 +71,9 @@ y versionado [SemVer](https://semver.org/lang/es/).
   responden con SQLSTATE `PT429`/`PT409` (PostgREST los traduce a HTTP 429/409) y
   la app muestra el texto de la base tal cual, sin el prefijo técnico. El 429 de
   Supabase Auth (demasiados "Participar" desde la misma IP) se traduce al castellano.
+  - Fase 13: la regla pasó a ser **cualquier** `PTxxx` que levantemos desde la
+    base, en vez de una lista fija de dos códigos. Los del panel son `PT403`
+    (no sos admin) y `PT422` (dato inválido).
 
 ### Fixed
 - **Pantalla en blanco cuando falta el `.env`:** `supabaseClient.js` llamaba a

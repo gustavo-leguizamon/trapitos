@@ -37,7 +37,7 @@ trapitos. El frontend corre 100% en el navegador y habla directo con **Supabase*
 
 ```
 src/
-├── main.jsx                  Punto de entrada; carga estilos y monta <App/>
+├── main.jsx                  Punto de entrada; monta <App/> o el panel según la URL
 ├── App.jsx                   Orquesta auth, carga de spots y UI
 ├── supabaseClient.js         Cliente de Supabase (lee VITE_SUPABASE_*)
 ├── hooks/
@@ -52,13 +52,20 @@ src/
 │   ├── schedule.js           Franjas horarias del trapito
 │   ├── proximity.js          Distancia y alertas de proximidad
 │   ├── errors.js             Errores de Supabase → mensaje para el usuario
-│   └── captcha.js            Captcha opcional del login anónimo (Turnstile)
+│   ├── captcha.js            Captcha opcional del login anónimo (Turnstile)
+│   └── admin.js              Presentación del backoffice: estados, acciones, ruta
 ├── components/
 │   ├── MapView.jsx           Mapa + marcadores + ViewportLoader + ClickHandler
 │   ├── AddSpotForm.jsx       Formulario de carga (hoja inferior)
 │   ├── SpotPopup.jsx         Popup de un trapito: votos, confianza, antigüedad
 │   ├── FranjaSelector.jsx    Selector múltiple de franjas (alta y confirmación)
 │   └── ReputationBadge.jsx   Badge con la reputación del usuario logueado
+├── admin/                    Backoffice (/admin), en un chunk aparte
+│   ├── AdminApp.jsx          Sesión, permisos, filtros y llamadas admin_*
+│   ├── AdminLogin.jsx        Login con email + contraseña
+│   ├── SpotsTable.jsx        Tabla de marcas con las acciones de moderación
+│   ├── AdminTools.jsx        Mantenimiento a pedido (caducidad, reportes, limpieza)
+│   └── admin.css             Estilos del panel (no pesan en la app pública)
 └── test/
     └── setup.js              Setup global de los tests
 
@@ -76,7 +83,8 @@ supabase/
     ├── phase10_reactivar.sql       Fase 10: incluir inactivos + reactivar_trapito
     ├── phase11_cuadra.sql          Fase 11: geom_calle + calle_geom en spots_cercanos
     ├── phase12_antiabuso.sql       Fase 12: límites de uso y antigüedad de cuenta
-    └── phase12_antiabuso_cron.sql  Fase 12: repaso diario de reportes (opcional)
+    ├── phase12_antiabuso_cron.sql  Fase 12: repaso diario de reportes (opcional)
+    └── phase13_backoffice.sql      Fase 13: tabla admins + funciones admin_*
 ```
 
 ## Modelo de datos
@@ -119,6 +127,17 @@ Tabla `abuse_reports` (moderación — Fase 9):
 
 Un trigger (`check_abuse_threshold`, security definer) oculta el trapito
 (`status = 'oculto'`) al llegar a 3 usuarios distintos que lo reportaron.
+
+Tabla `admins` (backoffice — Fase 13):
+
+| Columna | Tipo | Notas |
+|---------|------|-------|
+| `user_id` | uuid | PK, FK a `auth.users` (on delete cascade) |
+| `nota` | text | Para acordarse de quién es cada uno |
+| `created_at` | timestamptz | — |
+
+Tiene RLS activo y **cero políticas**: ningún cliente la lee ni la escribe. Se
+administra desde el Dashboard, que usa `service_role` y no pasa por RLS.
 
 ### Consulta por proximidad
 La función `spots_cercanos(lat, lng, radio_m)` usa `ST_DWithin` sobre la columna
@@ -205,6 +224,52 @@ la app se comporta igual que antes (`getToken()` devuelve `null` y el sign-in va
 derecho). El widget se monta con `appearance: 'interaction-only'`: invisible salvo
 que Cloudflare quiera desafiar. Falta además bajar el límite de sign-ins por IP en
 el Dashboard (ver README).
+
+### Backoffice de administración (Fase 13)
+El panel vive en **`/admin`** de la misma app. No es una app aparte ni tiene
+backend: `src/main.jsx` mira `window.location.pathname` y monta `AdminApp` (con
+`lazy()`) en vez de `App`. Sin router — son dos pantallas que no navegan entre sí
+— y en un chunk separado, así el bundle del panel no viaja al celular de quien
+solo quiere el mapa (queda además fuera del precache del service worker).
+
+**Dónde está el candado.** No en la UI: el bundle y la `anon key` son públicos,
+cualquiera puede abrir `/admin` (ve el login) y llamar a la API de Supabase por
+su cuenta. Lo que separa al admin del resto es lo que la base le deja hacer:
+
+```
+es_admin()  →  auth.uid() ∈ public.admins  Y  la cuenta no es anónima
+```
+
+Sobre eso se apoya un **conjunto cerrado de funciones** `admin_*` (security
+definer), cada una con `exigir_admin()` en la primera línea:
+
+| Función | Para qué |
+|---------|----------|
+| `admin_resumen()` | Conteos por estado, marcas con reportes, cuentas anónimas |
+| `admin_spots(...)` | Listado con **todos** los estados (incluye `oculto`), votos, reportes agrupados y datos del autor |
+| `admin_set_status(id, status)` | Publicar / caducar / ocultar, validando el estado |
+| `admin_editar_spot(id, calle, desc)` | Corregir el texto de una marca |
+| `admin_borrar_spot(id)` | Borrar (se lleva votos y reportes por cascada) |
+| `admin_expirar_trapitos()` | Wrapper de la caducidad, que tiene el execute revocado |
+| `admin_revisar_reportes_abuso()` | Ídem para el repaso de reportes |
+| `admin_anonimos_borrables(dias)` / `admin_limpiar_anonimos(dias)` | Contar y borrar cuentas anónimas viejas que no dejaron nada |
+
+Dos decisiones que vale explicar:
+
+- **Las políticas RLS no se ensancharon.** Era la opción obvia (una policy
+  `using (es_admin())` en cada tabla) pero da escritura total sobre las filas.
+  Con funciones, el poder del admin es *exactamente* esa lista: para poder algo
+  nuevo hay que agregarlo a propósito. De paso, la validación vive en un solo
+  lugar — `status` no tiene CHECK en la tabla, así que sin `admin_set_status`
+  un typo podía dejar una marca en un estado que el resto de la app no entiende.
+- **La cuenta de admin no puede ser anónima.** Una sesión anónima es gratis y
+  descartable; no es una identidad. `es_admin()` exige `is_anonymous = false`,
+  o sea email + contraseña. Con los signups de email apagados en el Dashboard,
+  esas cuentas solo las crea el dueño del proyecto.
+
+Si no sos admin, la base responde `PT403` → HTTP **403** con un mensaje ya
+redactado, que `src/lib/errors.js` muestra tal cual. La `service_role` key nunca
+va al frontend: se saltea RLS por completo.
 
 ## Decisiones de diseño
 

@@ -62,12 +62,47 @@ conviene frenar también la **creación** de cuentas, que se configura en el Das
 
    > Los votos y reportes son `on delete cascade`: borrar un usuario que aportó
    > algo se llevaría su historial, por eso las tres exclusiones.
+   > El [backoffice](#1d-habilitar-el-backoffice-opcional) tiene un botón que
+   > hace esto mismo, y otro que cuenta antes de borrar.
 
 ### 1.c Programar las tareas de mantenimiento (opcional)
 
 Ejecutá [`supabase/migrations/phase3_caducidad_cron.sql`](supabase/migrations/phase3_caducidad_cron.sql)
 y [`supabase/migrations/phase12_antiabuso_cron.sql`](supabase/migrations/phase12_antiabuso_cron.sql)
 para que **pg_cron** corra a diario la caducidad de marcas y el repaso de reportes de abuso.
+
+### 1.d Habilitar el backoffice (opcional)
+
+El panel de administración vive en **`/admin`** de la misma app y sirve para
+moderar: ver todas las marcas (incluidas las ocultas por abuso), corregir textos,
+publicar/caducar/ocultar/borrar, y correr el mantenimiento a mano.
+
+1. Ejecutá [`supabase/migrations/phase13_backoffice.sql`](supabase/migrations/phase13_backoffice.sql).
+2. **Creá tu usuario de admin** (con contraseña, no anónimo):
+   **Authentication > Users > Add user** → email + contraseña, con *Auto Confirm User*.
+3. **Dale el permiso**, en el SQL Editor:
+
+   ```sql
+   insert into public.admins (user_id, nota)
+   select id, 'dueño' from auth.users where email = 'vos@ejemplo.com'
+   on conflict (user_id) do nothing;
+   ```
+4. **Cerrá la puerta de atrás:** **Authentication > Sign In / Providers > Email**
+   → apagá *Enable signups*. Si no, cualquiera puede crearse una cuenta con
+   contraseña; no sería admin, pero no hace falta que exista.
+5. Recomendado: activá **MFA** en tu cuenta.
+
+> **Por qué esto alcanza.** El frontend es un SPA: el bundle y la `anon key` se
+> leen desde cualquier navegador, así que esconder la pantalla no protege nada
+> (cualquiera puede abrir `/admin`, y lo único que va a ver es el login). Lo que
+> hace que solo vos puedas *tocar datos* es que todas las operaciones del panel
+> son funciones `admin_*` de Postgres con la guarda `es_admin()` adentro: si el
+> `auth.uid()` que llama no está en `public.admins`, la base responde **403** y
+> no hay nada que el cliente pueda hacer al respecto. Las políticas RLS de las
+> tablas **no** se ensancharon para el admin — su poder es exactamente esa lista
+> de funciones. Ver [arquitectura](docs/ARQUITECTURA.md#backoffice-de-administración-fase-13).
+>
+> La `service_role` key nunca va al frontend: se saltea RLS por completo.
 
 ### 2. Configurar variables de entorno
 
@@ -119,7 +154,7 @@ alguno falla) y recuerda actualizar la documentación. Ver [`CONTRIBUTING.md`](C
 - **Calidad colaborativa:** botones "Confirmo / Ya no está" y score de confianza.
 - **Caducidad:** marcas viejas sin actividad se atenúan o desactivan.
 - **Comunidad:** reputación de usuarios, horarios del trapito, fotos, notificaciones por proximidad.
-- **Moderación:** reportes de abuso y panel de administración.
+- **Moderación:** reportes de abuso.
 
 ## PWA / instalación
 

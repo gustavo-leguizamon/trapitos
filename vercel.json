@@ -6,5 +6,6 @@
       "qas": true,
       "main": true
     }
-  }
+  },
+  "rewrites": [{ "source": "/admin", "destination": "/index.html" }]
 }

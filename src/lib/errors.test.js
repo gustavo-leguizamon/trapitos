@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   LIMITE_FRECUENCIA,
   LIMITE_DUPLICADO,
+  PERMISO_DENEGADO,
+  DATO_INVALIDO,
+  esMensajeDeLaBase,
   isLimiteAntiAbuso,
   isRateLimitAuth,
   mensajeDeError,
@@ -17,6 +20,22 @@ describe('isLimiteAntiAbuso', () => {
     expect(isLimiteAntiAbuso({ code: '23505' })).toBe(false)
     expect(isLimiteAntiAbuso({ message: 'network error' })).toBe(false)
     expect(isLimiteAntiAbuso(null)).toBe(false)
+  })
+})
+
+describe('esMensajeDeLaBase', () => {
+  it('reconoce cualquier PTxxx nuestro', () => {
+    expect(esMensajeDeLaBase({ code: LIMITE_FRECUENCIA })).toBe(true)
+    expect(esMensajeDeLaBase({ code: LIMITE_DUPLICADO })).toBe(true)
+    expect(esMensajeDeLaBase({ code: PERMISO_DENEGADO })).toBe(true)
+    expect(esMensajeDeLaBase({ code: DATO_INVALIDO })).toBe(true)
+  })
+
+  it('rechaza los errores que no levantamos nosotros', () => {
+    expect(esMensajeDeLaBase({ code: '23505' })).toBe(false)
+    expect(esMensajeDeLaBase({ code: 'PGRST301' })).toBe(false)
+    expect(esMensajeDeLaBase({ message: 'network error' })).toBe(false)
+    expect(esMensajeDeLaBase(null)).toBe(false)
   })
 })
 
@@ -47,6 +66,11 @@ describe('mensajeDeError', () => {
       message: 'Ya marcaste un trapito casi en el mismo lugar.',
     }
     expect(mensajeDeError(error, 'No se pudo guardar')).toBe(error.message)
+  })
+
+  it('muestra el error de permisos del panel tal cual', () => {
+    const error = { code: PERMISO_DENEGADO, message: 'Necesitás permisos de administrador.' }
+    expect(mensajeDeError(error, 'No se pudo borrar')).toBe(error.message)
   })
 
   it('traduce el 429 de la autenticación a un mensaje en castellano', () => {

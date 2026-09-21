@@ -10,6 +10,11 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['apple-touch-icon.png', 'favicon.png'],
+      workbox: {
+        // El panel (/admin) no es parte de la app instalable: no tiene sentido
+        // precachearlo en el celular de cada persona que abre el mapa.
+        globIgnores: ['**/AdminApp-*.js', '**/AdminApp-*.css'],
+      },
       manifest: {
         id: '/',
         name: 'Trapitos — mapa colaborativo',
